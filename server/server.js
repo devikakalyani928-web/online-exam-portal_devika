@@ -16,6 +16,7 @@ connectDB();
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/exams', require('./routes/examRoutes'));
+app.use('/api/questions', require('./routes/questionRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'API is running' });
