@@ -1,0 +1,201 @@
+ONLINE EXAM PORTAL
+
+1.PROJECT OVERVIEW 
+
+Project Title:Online Exam Portal
+Tech Stack:MERN(MongoDB,Express,React,Node.js)
+
+2.PROBLEM STATEMENT
+
+Traditional examination systems are time-consuming and inefficient, as they involve manual question paper preparation, answer evaluation, and result processing. These methods often lead to human errors, delays in result declaration, and excessive use of paper. Conducting exams manually also makes it difficult to prevent malpractice and retakes. There is no instant evaluation system, and maintaining exam records becomes complex and insecure. Hence, there is a need for an automated online examination system that allows administrators to create tests easily, enables users to take exams securely, automatically evaluates answers, calculates scores instantly, and restricts multiple attempts, ensuring accuracy, transparency, and efficiency in the examination process.
+
+3.Proposed System
+
+The proposed system is a web-based Online Exam Portal designed to automate the examination process. In this system, the administrator has full control over creating, managing, and scheduling online tests by adding multiple-choice questions with four options. Users can securely log in and take the exam within the given rules. The system automatically evaluates the submitted answers and calculates the final score instantly. To ensure fairness and prevent misuse, the system restricts users from attempting the same exam more than once. All exam data, including questions, user details, and results, are stored securely in a database. This system reduces manual work, saves time, improves accuracy, and ensures a transparent examination process.
+
+Features of the Proposed System
+
+
+a. Online Test Management
+The administrator can create, edit, and manage online examinations by adding multiple-choice questions with four options. Tests can be activated or deactivated as required.
+b. Secure User Authentication
+Users must register and log in using valid credentials before attending the examination. This ensures secure access and prevents unauthorized usage.
+c. Automated Evaluation and Result Calculation
+The system automatically evaluates the answers submitted by the user and calculates the total score instantly, eliminating manual correction and human errors.
+d. Retake Prevention Mechanism
+The system restricts users from attempting the same exam more than once, ensuring fairness and preventing misuse of the examination process.
+e. Real-Time Result Display
+After submission of the exam, users can immediately view their results, including total marks and correct answers.
+f. Data Storage and Management
+All exam details, user information, and results are securely stored in the database for future reference and reporting.
+g. User-Friendly Interface
+The system provides a simple and easy-to-use interface that allows users and administrators to navigate the portal without technical difficulty.
+
+4. USER ROLES & PERMISSIONS
+
+1. System Admin
+Has complete control over the Online Exam Portal.
+Creates, modifies, and deletes user accounts.
+Assigns roles and permissions to users.
+Manages overall system configuration and security.
+Views all examinations, results, and system activity logs.
+2. Exam Manager
+Creates and schedules online examinations.
+Sets exam duration and availability.
+Activates and deactivates exams as required.
+Monitors ongoing exams and exam status.
+Ensures that exam rules are properly enforced.
+3. Question Manager
+Creates and maintains the question bank.
+Adds multiple-choice questions with four options.
+Updates, deletes, or corrects questions when needed.
+Assigns correct answers for automatic evaluation.
+Ensures question quality and avoids duplication.
+4. Result Manager
+Views automatically evaluated exam results.
+Generates result summaries and reports.
+Verifies exam completion and submission status.
+Accesses student performance data in read-only mode.
+Does not have permission to modify marks or answers.
+5. Student
+Registers and logs into the system using valid credentials.
+Views available online examinations.
+Attempts each examination only once.
+Selects answers and submits the exam.
+Views results immediately after exam submission.
+
+5.DATABASE STRUCTURE (Schemas)
+
+A. User Schema
+user_id (Int, Primary Key)
+username (String, Unique)
+full_name (String)
+email (String, Unique)
+password (Hashed)
+role (String: 'System Admin' / 'Exam Manager' / 'Question Manager' / 'Result Manager' / 'Student')
+created_at (DateTime)
+B. Student Schema
+student_id (Int, Primary Key)
+user_id (Int, Foreign Key → User.user_id)
+class (String)
+section (String)
+dob (Date)
+C. Exam Schema
+exam_id (Int, Primary Key)
+exam_name (String)
+start_time (DateTime)
+end_time (DateTime)
+duration (Int, in minutes)
+created_by (Int, Foreign Key → User.user_id)
+D. Question Schema
+question_id (Int, Primary Key)
+exam_id (Int, Foreign Key → Exam.exam_id)
+question_text (String)
+option1 (String)
+option2 (String)
+option3 (String)
+option4 (String)
+correct_option (Int: 1/2/3/4)
+created_by (Int, Foreign Key → User.user_id)
+E. Exam_Attempts Schema
+attempt_id (Int, Primary Key)
+exam_id (Int, Foreign Key → Exam.exam_id)
+student_id (Int, Foreign Key → Student.student_id)
+start_time (DateTime)
+end_time (DateTime)
+total_score (Int)
+completed (Boolean)
+F. Student_Answers Schema
+answer_id (Int, Primary Key)
+attempt_id (Int, Foreign Key → Exam_Attempts.attempt_id)
+question_id (Int, Foreign Key → Question.question_id)
+selected_option (Int: 1/2/3/4)
+is_correct (Boolean)
+
+6.FEATURE WORKFLOW (The "User Journey")
+
+User Journey – System Admin
+Login: System Admin logs in and lands on the Menu Page.
+Add: Creates users such as Exam Manager, Question Manager, Result Manager, and Students.
+Assign: Assigns roles and permissions to users.
+Manage: Monitors system activity and user access.
+Review: Reviews overall exam performance and system reports.
+User Journey – Exam Manager
+Login: Exam Manager logs in and lands on the Menu Page.
+Create: Creates new online exams.
+Schedule: Sets exam duration, start time, and end time.
+Activate: Activates or deactivates exams.
+Monitor: Monitors ongoing exams and exam status.
+User Journey – Question Manager
+Login: Question Manager logs in and lands on the Menu Page.
+Select: Selects an exam to manage questions.
+Add: Adds MCQ questions with four options.
+Assign: Sets the correct answer for each question.
+Update: Edits or deletes questions if required.
+Maintain: Maintains the question bank.
+User Journey – Result Manager
+Login: Result Manager logs in and lands on the Menu Page.
+View: Views automatically evaluated exam results.
+Verify: Verifies exam completion status of students.
+Generate: Generates result summaries and reports.
+Review: Reviews student performance (read-only access).
+User Journey – Student
+Login: Student logs in and lands on the Menu Page.
+Browse: Views list of available online exams.
+Start: Selects and starts an exam.
+Attempt: Answers MCQ questions within the given time.
+Submit: Submits the exam.
+Evaluate: System automatically evaluates the exam.
+View: Student views results immediately after submission.
+Restrict: Student cannot retake the same exam.
+
+7. API ENDPOINTS (The URL Rules)
+
+Authentication
+POST /api/auth/login
+→ Login user (all roles)
+POST /api/auth/logout
+→ Logout user
+User Management (System Admin)
+POST /api/users
+→ Create new user (Exam Manager, Question Manager, Result Manager, Student)
+GET /api/users
+→ Get list of all users
+PUT /api/users/:id
+→ Update user details or role (Admin only)
+DELETE /api/users/:id
+→ Delete user (Admin only)
+Exam Management (Exam Manager)
+POST /api/exams
+→ Create new exam
+GET /api/exams
+→ Get list of all exams
+PUT /api/exams/:id
+→ Update exam details
+POST /api/exams/:id/activate
+→ Activate exam
+POST /api/exams/:id/deactivate
+→ Deactivate exam
+Question Management (Question Manager)
+POST /api/questions
+→ Add new MCQ question
+GET /api/questions/:examId
+→ Get questions for an exam
+PUT /api/questions/:id
+→ Update question
+DELETE /api/questions/:id
+→ Delete question
+Exam Attempt & Submission (Student)
+POST /api/exams/:id/start
+→ Start exam (create exam attempt)
+POST /api/answers
+→ Submit answer for a question
+POST /api/exams/:id/submit
+→ Submit exam
+Results (Result Manager / Student)
+GET /api/results
+→ Get all exam results (Result Manager)
+GET /api/results/:examId
+→ Get results of a specific exam
+GET /api/results/student/:studentId
+→ Get results of a student

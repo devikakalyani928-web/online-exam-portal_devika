@@ -12,8 +12,16 @@ app.use(express.json());
 
 connectDB();
 
+// Routes
+app.use('/api/auth', require('./routes/authRoutes'));
+
 app.get('/', (req, res) => {
   res.json({ message: 'API is running' });
+});
+
+// Fallback for unknown routes
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
 });
 
 const PORT = process.env.PORT || 5000;
