@@ -6,18 +6,22 @@ const {
   updateExam,
   activateExam,
   deactivateExam,
+  getAvailableExams,
+  getExamQuestionsForStudent,
+  startExam,
+  submitExam,
 } = require('../controllers/examController');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// All exam management routes are for Exam Manager
-router.use(protect, authorize('Exam Manager'));
-
-router.get('/', getExams);
+// Exam Manager routes
+router.get('/', protect, authorize('Exam Manager'), getExams);
 
 router.post(
   '/',
+  protect,
+  authorize('Exam Manager'),
   [
     body('exam_name').notEmpty().withMessage('Exam name is required'),
     body('start_time').notEmpty().withMessage('Start time is required'),
@@ -27,9 +31,15 @@ router.post(
   createExam
 );
 
-router.put('/:id', updateExam);
-router.post('/:id/activate', activateExam);
-router.post('/:id/deactivate', deactivateExam);
+router.put('/:id', protect, authorize('Exam Manager'), updateExam);
+router.post('/:id/activate', protect, authorize('Exam Manager'), activateExam);
+router.post('/:id/deactivate', protect, authorize('Exam Manager'), deactivateExam);
+
+// Student routes
+router.get('/available', protect, authorize('Student'), getAvailableExams);
+router.get('/:id/questions', protect, authorize('Student'), getExamQuestionsForStudent);
+router.post('/:id/start', protect, authorize('Student'), startExam);
+router.post('/:id/submit', protect, authorize('Student'), submitExam);
 
 module.exports = router;
 
