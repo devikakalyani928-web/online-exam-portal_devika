@@ -5,6 +5,9 @@ const {
   getQuestionsByExam,
   updateQuestion,
   deleteQuestion,
+  getAllQuestions,
+  getQuestionStats,
+  checkDuplicate,
 } = require('../controllers/questionController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -28,6 +31,10 @@ router.post(
   ],
   createQuestion
 );
+
+router.get('/all', getAllQuestions);
+router.get('/stats', getQuestionStats);
+router.post('/check-duplicate', checkDuplicate);
 
 router.get('/:examId', getQuestionsByExam);
 
