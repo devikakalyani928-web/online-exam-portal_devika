@@ -10,6 +10,9 @@ const {
   getExamQuestionsForStudent,
   startExam,
   submitExam,
+  getExamDetails,
+  getExamAttempts,
+  getOngoingAttempts,
 } = require('../controllers/examController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -31,6 +34,9 @@ router.post(
   createExam
 );
 
+router.get('/:id/details', protect, authorize('Exam Manager'), getExamDetails);
+router.get('/:id/attempts', protect, authorize('Exam Manager'), getExamAttempts);
+router.get('/:id/ongoing', protect, authorize('Exam Manager'), getOngoingAttempts);
 router.put('/:id', protect, authorize('Exam Manager'), updateExam);
 router.post('/:id/activate', protect, authorize('Exam Manager'), activateExam);
 router.post('/:id/deactivate', protect, authorize('Exam Manager'), deactivateExam);

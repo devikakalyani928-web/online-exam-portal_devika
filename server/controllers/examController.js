@@ -216,6 +216,87 @@ const submitExam = async (req, res) => {
   }
 };
 
+// GET /api/exams/:id/details (Exam Manager) - Get exam details with stats
+const getExamDetails = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const exam = await Exam.findById(id).populate('created_by', 'username full_name email');
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+
+    // Get questions count
+    const questionsCount = await Question.countDocuments({ exam_id: id });
+
+    // Get attempts stats
+    const attemptsStats = await ExamAttempt.aggregate([
+      { $match: { exam_id: exam._id } },
+      {
+        $group: {
+          _id: null,
+          totalAttempts: { $sum: 1 },
+          completedAttempts: { $sum: { $cond: ['$completed', 1, 0] } },
+          ongoingAttempts: { $sum: { $cond: [{ $eq: ['$completed', false] }, 1, 0] } },
+          avgScore: { $avg: { $cond: ['$completed', '$total_score', null] } },
+        },
+      },
+    ]);
+
+    const stats = attemptsStats[0] || {
+      totalAttempts: 0,
+      completedAttempts: 0,
+      ongoingAttempts: 0,
+      avgScore: 0,
+    };
+
+    return res.json({
+      exam,
+      questionsCount,
+      attempts: {
+        total: stats.totalAttempts,
+        completed: stats.completedAttempts,
+        ongoing: stats.ongoingAttempts,
+        averageScore: stats.avgScore ? stats.avgScore.toFixed(2) : 0,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching exam details:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/exams/:id/attempts (Exam Manager) - Get all attempts for an exam
+const getExamAttempts = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const attempts = await ExamAttempt.find({ exam_id: id })
+      .populate('student_id', 'username full_name email')
+      .sort({ createdAt: -1 });
+    return res.json(attempts);
+  } catch (error) {
+    console.error('Error fetching exam attempts:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/exams/:id/ongoing (Exam Manager) - Get ongoing attempts
+const getOngoingAttempts = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const ongoingAttempts = await ExamAttempt.find({
+      exam_id: id,
+      completed: false,
+    })
+      .populate('student_id', 'username full_name email')
+      .sort({ start_time: -1 });
+
+    return res.json(ongoingAttempts);
+  } catch (error) {
+    console.error('Error fetching ongoing attempts:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createExam,
   getExams,
@@ -226,6 +307,9 @@ module.exports = {
   getExamQuestionsForStudent,
   startExam,
   submitExam,
+  getExamDetails,
+  getExamAttempts,
+  getOngoingAttempts,
 };
 
 

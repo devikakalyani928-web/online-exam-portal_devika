@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getDashboardRoute } from '../utils/roleRoutes';
 
 const Login = () => {
   const { login } = useAuth();
@@ -15,8 +16,10 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
-      navigate('/');
+      const userData = await login(email, password);
+      // Redirect to role-specific dashboard
+      const dashboardRoute = getDashboardRoute(userData.role);
+      navigate(dashboardRoute);
     } catch (err) {
       setError(err.message);
     } finally {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getDashboardRoute } from '../utils/roleRoutes';
 
 const roles = ['Student', 'System Admin', 'Exam Manager', 'Question Manager', 'Result Manager'];
 
@@ -26,8 +27,10 @@ const Register = () => {
     setError('');
     setLoading(true);
     try {
-      await register(form);
-      navigate('/');
+      const userData = await register(form);
+      // Redirect to role-specific dashboard
+      const dashboardRoute = getDashboardRoute(userData.role);
+      navigate(dashboardRoute);
     } catch (err) {
       setError(err.message);
     } finally {

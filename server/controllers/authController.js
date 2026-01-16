@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  jwt.sign({ id }, process.env.JWT_SECRET || 'your-secret-key-change-in-production', { expiresIn: '7d' });
 
 const handleValidation = (req, res) => {
   const errors = validationResult(req);
@@ -26,12 +26,19 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Validate role if provided
+    const validRoles = ['System Admin', 'Exam Manager', 'Question Manager', 'Result Manager', 'Student'];
+    const userRole = role || 'Student';
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+    }
+
     const user = await User.create({
       username,
       full_name,
       email,
       password,
-      role: role || 'Student',
+      role: userRole,
     });
 
     return res.status(201).json({
@@ -43,7 +50,17 @@ const register = async (req, res) => {
       token: generateToken(user._id),
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Server error' });
+    console.error('Registration error:', error);
+    // Return more specific error messages
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.code === 11000) {
+      // Duplicate key error
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+    }
+    return res.status(500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -68,7 +85,8 @@ const login = async (req, res) => {
       token: generateToken(user._id),
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', error);
+    return res.status(500).json({ message: error.message || 'Server error' });
   }
 };
 
