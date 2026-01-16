@@ -1,11 +1,14 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { getUsers, createUser, updateUser, deleteUser } = require('../controllers/userController');
+const { getUsers, createUser, updateUser, deleteUser, getStudents } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// All routes here require System Admin
+// Result Manager can view students (read-only)
+router.get('/students', protect, authorize('Result Manager'), getStudents);
+
+// All other routes here require System Admin
 router.use(protect, authorize('System Admin'));
 
 router.get('/', getUsers);

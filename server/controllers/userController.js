@@ -87,6 +87,16 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, createUser, updateUser, deleteUser };
+// GET /api/users/students (Result Manager) - Get all students (read-only)
+const getStudents = async (req, res) => {
+  try {
+    const students = await User.find({ role: 'Student' }).select('-password');
+    return res.json(students);
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { getUsers, createUser, updateUser, deleteUser, getStudents };
 
 

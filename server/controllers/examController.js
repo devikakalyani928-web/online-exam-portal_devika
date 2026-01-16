@@ -100,8 +100,24 @@ const getAvailableExams = async (req, res) => {
       is_active: true,
       start_time: { $lte: now },
       end_time: { $gte: now },
+    }).sort({ start_time: 1 });
+
+    // Check which exams the student has already attempted
+    const examIds = exams.map((e) => e._id);
+    const attempts = await ExamAttempt.find({
+      exam_id: { $in: examIds },
+      student_id: req.user._id,
     });
-    return res.json(exams);
+
+    const attemptedExamIds = new Set(attempts.map((a) => String(a.exam_id)));
+
+    const examsWithStatus = exams.map((exam) => ({
+      ...exam.toObject(),
+      attempted: attemptedExamIds.has(String(exam._id)),
+      attemptId: attempts.find((a) => String(a.exam_id) === String(exam._id))?._id,
+    }));
+
+    return res.json(examsWithStatus);
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }

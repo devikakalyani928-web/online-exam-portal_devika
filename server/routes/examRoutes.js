@@ -18,8 +18,8 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Exam Manager routes
-router.get('/', protect, authorize('Exam Manager'), getExams);
+// Exam Manager, Question Manager, and Result Manager routes (all need to view exams)
+router.get('/', protect, authorize('Exam Manager', 'Question Manager', 'Result Manager'), getExams);
 
 router.post(
   '/',
