@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
@@ -13,6 +13,7 @@ const StudentDashboard = () => {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [examStartTime, setExamStartTime] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [myResults, setMyResults] = useState([]);
@@ -53,15 +54,35 @@ const StudentDashboard = () => {
   const fetchResultDetails = async (attemptId) => {
     try {
       setDetailsLoading(true);
+      // Check if the attempt is completed before fetching details
+      const attempt = myResults.find((r) => r._id === attemptId);
+      if (!attempt || !attempt.completed) {
+        setResultDetails(null);
+        setDetailsLoading(false);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/api/results/student/me/${attemptId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to load result details');
+      if (!res.ok) {
+        if (res.status === 400) {
+          // 400 means exam not yet completed - this is expected
+          setResultDetails(null);
+          setDetailsLoading(false);
+          return;
+        }
+        throw new Error('Failed to load result details');
+      }
       const data = await res.json();
       setResultDetails(data);
       setError('');
     } catch (err) {
-      setError(err.message);
+      // Don't show error for 400 (incomplete exam) - it's expected
+      if (err.message !== 'Failed to load result details' || !err.message.includes('400')) {
+        setError(err.message);
+      }
+      setResultDetails(null);
     } finally {
       setDetailsLoading(false);
     }
@@ -77,15 +98,40 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     if (selectedResult && activeTab === 'results') {
-      fetchResultDetails(selectedResult);
+      // Only fetch details if the attempt is completed
+      const attempt = myResults.find((r) => r._id === selectedResult);
+      if (attempt && attempt.completed) {
+        fetchResultDetails(selectedResult);
+      } else {
+        setResultDetails(null);
+        setDetailsLoading(false);
+      }
     }
-  }, [selectedResult, activeTab, token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedResult, activeTab, token, myResults]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Use refs to store latest values for the timer
+  const selectedExamRef = useRef(selectedExam);
+  const answersRef = useRef(answers);
+  const tokenRef = useRef(token);
+
+  useEffect(() => {
+    selectedExamRef.current = selectedExam;
+    answersRef.current = answers;
+    tokenRef.current = token;
+  }, [selectedExam, answers, token]);
 
   // Timer effect
   useEffect(() => {
     if (!selectedExam || !examStartTime || result) return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const now = new Date();
       const elapsed = Math.floor((now - examStartTime) / 1000); // seconds
       const durationMinutes = selectedExam.duration;
@@ -95,8 +141,54 @@ const StudentDashboard = () => {
       if (remaining <= 0) {
         setTimeRemaining(0);
         // Auto-submit when time runs out
-        if (Object.keys(answers).length > 0) {
-          submitExam();
+        const currentAnswers = answersRef.current;
+        if (Object.keys(currentAnswers).length > 0) {
+          const currentExam = selectedExamRef.current;
+          const currentToken = tokenRef.current;
+          
+          if (!currentExam) {
+            clearInterval(interval);
+            return;
+          }
+
+          const payloadAnswers = Object.entries(currentAnswers).map(([question_id, selected_option]) => ({
+            question_id,
+            selected_option,
+          }));
+
+          try {
+            const res = await fetch(`${API_BASE}/api/exams/${currentExam._id}/submit`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${currentToken}`,
+              },
+              body: JSON.stringify({ answers: payloadAnswers }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data?.message || 'Failed to submit exam');
+            }
+            setResult(data);
+            setTimeRemaining(null);
+            // Refresh exams and results after submission
+            const examsRes = await fetch(`${API_BASE}/api/exams/available`, {
+              headers: { Authorization: `Bearer ${currentToken}` },
+            });
+            if (examsRes.ok) {
+              const examsData = await examsRes.json();
+              setExams(examsData);
+            }
+            const resultsRes = await fetch(`${API_BASE}/api/results/student/me`, {
+              headers: { Authorization: `Bearer ${currentToken}` },
+            });
+            if (resultsRes.ok) {
+              const resultsData = await resultsRes.json();
+              setMyResults(resultsData);
+            }
+          } catch (err) {
+            setError(err.message);
+          }
         }
         clearInterval(interval);
       } else {
@@ -105,60 +197,21 @@ const StudentDashboard = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [selectedExam, examStartTime, answers, result]);
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const startExam = async (exam) => {
-    if (exam.attempted) {
-      setError('You have already attempted this exam. You cannot retake it.');
-      return;
-    }
-
-    setSelectedExam(exam);
-    setQuestions([]);
-    setAnswers({});
-    setResult(null);
-    setError('');
-    setTimeRemaining(null);
-    setExamStartTime(null);
-
-    try {
-      const startRes = await fetch(`${API_BASE}/api/exams/${exam._id}/start`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!startRes.ok) {
-        const errorData = await startRes.json().catch(() => ({}));
-        throw new Error(errorData?.message || 'Failed to start exam');
-      }
-
-      const startData = await startRes.json();
-      setExamStartTime(new Date(startData.start_time || new Date()));
-
-      const questionsRes = await fetch(`${API_BASE}/api/exams/${exam._id}/questions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!questionsRes.ok) throw new Error('Failed to load questions');
-      const questionsData = await questionsRes.json();
-      setQuestions(questionsData);
-    } catch (err) {
-      setError(err.message);
-      setSelectedExam(null);
-    }
-  };
-
-  const handleAnswerChange = (questionId, selected_option) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: selected_option }));
-  };
+  }, [selectedExam, examStartTime, result]);
 
   const submitExam = async () => {
     if (!selectedExam) return;
+    
+    // Validate that all questions are answered
+    const answeredCount = Object.keys(answers).length;
+    const totalQuestions = questions.length;
+    
+    if (answeredCount < totalQuestions) {
+      const unansweredCount = totalQuestions - answeredCount;
+      setError(`You have ${unansweredCount} unanswered question${unansweredCount > 1 ? 's' : ''}. Please complete all questions before submitting.`);
+      return;
+    }
+    
     const payloadAnswers = Object.entries(answers).map(([question_id, selected_option]) => ({
       question_id,
       selected_option,
@@ -180,11 +233,92 @@ const StudentDashboard = () => {
       }
       setResult(data);
       setTimeRemaining(null);
-      fetchAvailableExams();
-      fetchMyResults();
+      // Refresh exams and results after submission
+      const examsRes = await fetch(`${API_BASE}/api/exams/available`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (examsRes.ok) {
+        const examsData = await examsRes.json();
+        setExams(examsData);
+      }
+      const resultsRes = await fetch(`${API_BASE}/api/results/student/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resultsRes.ok) {
+        const resultsData = await resultsRes.json();
+        setMyResults(resultsData);
+      }
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const startExam = async (exam) => {
+    // Strict retake prevention: Block only if exam is completed
+    if (exam.attemptCompleted) {
+      setError('You have already completed this exam. You cannot retake it.');
+      return;
+    }
+
+    // If attempted but not completed, allow continuing (backend will return existing attempt)
+    // This enforces "only once" - they can continue but not start fresh
+    // Allow continuing even if exam time window has passed (for incomplete attempts)
+
+    // Only check canStart for NEW attempts, not for continuing incomplete attempts
+    if (!exam.attempted && exam.canStart === false) {
+      setError(`This exam is ${exam.status || 'not available'} right now. Please try within the exam time window.`);
+      return;
+    }
+
+    setSelectedExam(exam);
+    setQuestions([]);
+    setAnswers({});
+    setResult(null);
+    setError('');
+    setTimeRemaining(null);
+    setExamStartTime(null);
+    setQuestionsLoading(true);
+
+    try {
+      const startRes = await fetch(`${API_BASE}/api/exams/${exam._id}/start`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!startRes.ok) {
+        const errorData = await startRes.json().catch(() => ({}));
+        const errorMessage = errorData?.message || 'Failed to start exam';
+        // Log the error for debugging
+        console.error('Start exam API error:', {
+          status: startRes.status,
+          statusText: startRes.statusText,
+          message: errorMessage,
+          examId: exam._id,
+          attempted: exam.attempted,
+          attemptCompleted: exam.attemptCompleted,
+        });
+        throw new Error(errorMessage);
+      }
+
+      const startData = await startRes.json();
+      setExamStartTime(new Date(startData.start_time || new Date()));
+
+      const questionsRes = await fetch(`${API_BASE}/api/exams/${exam._id}/questions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!questionsRes.ok) throw new Error('Failed to load questions');
+      const questionsData = await questionsRes.json();
+      setQuestions(questionsData);
+      setQuestionsLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setSelectedExam(null);
+      setQuestionsLoading(false);
+    }
+  };
+
+  const handleAnswerChange = (questionId, selected_option) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: selected_option }));
   };
 
   const resetExam = () => {
@@ -231,8 +365,26 @@ const StudentDashboard = () => {
       )}
 
       {/* Exam Taking View */}
-      {selectedExam && questions.length > 0 && !result && (
+      {selectedExam && !result && (
         <div style={{ border: '2px solid #28a745', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem' }}>
+          {questionsLoading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <h3>Loading Exam...</h3>
+              <p>Please wait while we load the questions.</p>
+            </div>
+          ) : questions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <h3>No Questions Available</h3>
+              <p>This exam doesn't have any questions yet. Please contact your instructor.</p>
+              <button
+                onClick={resetExam}
+                style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', marginTop: '1rem' }}
+              >
+                Go Back
+              </button>
+            </div>
+          ) : (
+            <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ margin: 0 }}>Exam: {selectedExam.exam_name}</h3>
@@ -322,17 +474,20 @@ const StudentDashboard = () => {
               style={{
                 padding: '0.75rem 1.5rem',
                 cursor: answeredCount === 0 ? 'not-allowed' : 'pointer',
-                background: answeredCount === 0 ? '#ccc' : '#28a745',
+                background: answeredCount === 0 ? '#ccc' : answeredCount < questions.length ? '#ff9800' : '#28a745',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 fontSize: '1rem',
                 fontWeight: 'bold',
               }}
+              title={answeredCount < questions.length ? `You have ${questions.length - answeredCount} unanswered question${questions.length - answeredCount > 1 ? 's' : ''}` : 'Submit your exam'}
             >
-              Submit Exam
+              Submit Exam {answeredCount < questions.length && `(${answeredCount}/${questions.length})`}
             </button>
           </div>
+            </>
+          )}
         </div>
       )}
 
@@ -384,26 +539,78 @@ const StudentDashboard = () => {
                     <p>Duration: {exam.duration} minutes</p>
                     <p>Start: {new Date(exam.start_time).toLocaleString()}</p>
                     <p>End: {new Date(exam.end_time).toLocaleString()}</p>
+                    {exam.status && (
+                      <p>
+                        Status:{' '}
+                        <strong style={{ color: exam.status === 'Ongoing' ? 'green' : exam.status === 'Scheduled' ? '#007bff' : 'red' }}>
+                          {exam.status}
+                        </strong>
+                      </p>
+                    )}
                   </div>
-                  {exam.attempted ? (
+                  {exam.attemptCompleted ? (
                     <div>
-                      <p style={{ color: '#ff9800', fontWeight: 'bold', marginBottom: '0.5rem' }}>✓ Already Attempted</p>
+                      <p style={{ color: '#dc3545', fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                        You have already attempted this exam
+                      </p>
                       <button
-                        onClick={() => {
-                          setActiveTab('results');
-                          setSelectedResult(exam.attemptId);
+                        disabled
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          cursor: 'not-allowed',
+                          background: '#ccc',
+                          color: '#666',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '1rem',
+                          fontWeight: 'bold',
+                          width: '100%',
+                          opacity: 0.6,
                         }}
-                        style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.9rem' }}
                       >
-                        View Result
+                        Start Exam
+                      </button>
+                    </div>
+                  ) : exam.attempted && !exam.attemptCompleted ? (
+                    <div>
+                      <p style={{ color: '#ff9800', fontWeight: 'bold', marginBottom: '0.5rem' }}>⏳ Exam In Progress</p>
+                      <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
+                        You have already started this exam. You can only continue your existing attempt.
+                      </p>
+                      <button
+                        onClick={() => startExam(exam)}
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          cursor: 'pointer',
+                          background: '#ff9800',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '1rem',
+                          fontWeight: 'bold',
+                          width: '100%',
+                        }}
+                      >
+                        Continue Exam
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => startExam(exam)}
-                      style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold', width: '100%' }}
+                      disabled={exam.canStart === false}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        cursor: exam.canStart === false ? 'not-allowed' : 'pointer',
+                        background: exam.canStart === false ? '#ccc' : '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '1rem',
+                        fontWeight: 'bold',
+                        width: '100%',
+                      }}
                     >
-                      Start Exam
+                      {exam.canStart === false ? 'Not Available Yet' : 'Start Exam'}
                     </button>
                   )}
                 </div>
@@ -505,38 +712,59 @@ const StudentDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {myResults.map((att) => (
-                        <tr key={att._id}>
-                          <td>{att.exam_id?.exam_name || 'N/A'}</td>
-                          <td>
-                            {att.completed ? (
-                              <strong style={{ color: att.total_score >= 50 ? 'green' : 'red' }}>
-                                {att.total_score}
-                              </strong>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
-                          <td>
-                            <span style={{ color: att.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
-                              {att.completed ? 'Completed' : 'In Progress'}
-                            </span>
-                          </td>
-                          <td>{new Date(att.createdAt).toLocaleString()}</td>
-                          <td>
-                            {att.completed ? (
-                              <button
-                                onClick={() => setSelectedResult(att._id)}
-                                style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                              >
-                                View Details
-                              </button>
-                            ) : (
-                              <span style={{ color: '#666', fontSize: '0.85rem' }}>Not completed</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {myResults.map((att) => {
+                        // Get total questions count from exam
+                        const totalQuestions = att.exam_id?.questionsCount || 0;
+                        const scoreDisplay = att.completed && att.total_score !== undefined 
+                          ? totalQuestions > 0 
+                            ? `${att.total_score} / ${totalQuestions}`
+                            : `${att.total_score}`
+                          : '-';
+                        const percentage = att.completed && totalQuestions > 0 && att.total_score !== undefined
+                          ? Math.round((att.total_score / totalQuestions) * 100)
+                          : null;
+                        const isPassing = percentage !== null && percentage >= 50;
+
+                        return (
+                          <tr key={att._id}>
+                            <td>{att.exam_id?.exam_name || 'N/A'}</td>
+                            <td>
+                              {att.completed ? (
+                                <div>
+                                  <strong style={{ color: isPassing ? 'green' : 'red' }}>
+                                    {scoreDisplay}
+                                  </strong>
+                                  {percentage !== null && (
+                                    <span style={{ marginLeft: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+                                      ({percentage}%)
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td>
+                              <span style={{ color: att.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
+                                {att.completed ? 'Completed' : 'In Progress'}
+                              </span>
+                            </td>
+                            <td>{new Date(att.createdAt).toLocaleString()}</td>
+                            <td>
+                              {att.completed ? (
+                                <button
+                                  onClick={() => setSelectedResult(att._id)}
+                                  style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
+                                >
+                                  View Details
+                                </button>
+                              ) : (
+                                <span style={{ color: '#666', fontSize: '0.85rem' }}>Not completed</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

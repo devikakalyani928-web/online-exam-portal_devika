@@ -43,7 +43,7 @@ const createUser = async (req, res) => {
 // PUT /api/users/:id
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { username, full_name, email, role } = req.body;
+  const { username, full_name, email, role, password } = req.body;
 
   try {
     const user = await User.findById(id);
@@ -51,10 +51,28 @@ const updateUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Check for duplicate email or username (excluding current user)
+    if (email && email !== user.email) {
+      const emailExists = await User.findOne({ email, _id: { $ne: id } });
+      if (emailExists) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+    }
+
+    if (username && username !== user.username) {
+      const usernameExists = await User.findOne({ username, _id: { $ne: id } });
+      if (usernameExists) {
+        return res.status(400).json({ message: 'Username already in use' });
+      }
+    }
+
     if (username !== undefined) user.username = username;
     if (full_name !== undefined) user.full_name = full_name;
     if (email !== undefined) user.email = email;
     if (role !== undefined) user.role = role;
+    if (password !== undefined && password.trim() !== '') {
+      user.password = password; // Will be hashed by pre-save hook
+    }
 
     await user.save();
 
@@ -66,6 +84,9 @@ const updateUser = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Duplicate key error' });
+    }
     return res.status(500).json({ message: 'Server error' });
   }
 };

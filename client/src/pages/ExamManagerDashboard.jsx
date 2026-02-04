@@ -141,6 +141,7 @@ const ExamManagerDashboard = () => {
       duration: exam.duration,
     });
     setEditMode(true);
+    setActiveTab('create'); // Switch to Create tab to show edit form
   };
 
   const handleUpdate = async (e) => {
@@ -155,13 +156,21 @@ const ExamManagerDashboard = () => {
         },
         body: JSON.stringify(editForm),
       });
-      if (!res.ok) throw new Error('Failed to update exam');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = body?.message || body?.errors?.[0]?.msg || 'Failed to update exam';
+        throw new Error(msg);
+      }
       setEditMode(false);
       setSelectedExam(null);
+      setEditForm({
+        exam_name: '',
+        start_time: '',
+        end_time: '',
+        duration: 60,
+      });
       fetchExams();
-      if (activeTab === 'monitor') {
-        fetchExamDetails(selectedExam);
-      }
+      setActiveTab('overview'); // Switch back to overview after successful update
     } catch (err) {
       setError(err.message);
     }
@@ -307,58 +316,130 @@ const ExamManagerDashboard = () => {
       {/* Create Tab */}
       {activeTab === 'create' && (
         <div>
-          <h3>Create New Exam</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 500 }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Exam Name</label>
-              <input
-                name="exam_name"
-                placeholder="e.g., Mathematics Final Exam"
-                value={form.exam_name}
-                onChange={handleChange}
-                required
-                style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Time</label>
-              <input
-                type="datetime-local"
-                name="start_time"
-                value={form.start_time}
-                onChange={handleChange}
-                required
-                style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Time</label>
-              <input
-                type="datetime-local"
-                name="end_time"
-                value={form.end_time}
-                onChange={handleChange}
-                required
-                style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Duration (minutes)</label>
-              <input
-                type="number"
-                name="duration"
-                value={form.duration}
-                onChange={handleChange}
-                min={1}
-                required
-                style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-              />
-              <small style={{ color: '#666' }}>Time limit for each student to complete the exam</small>
-            </div>
-            <button type="submit" style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold' }}>
-              Create Exam
-            </button>
-          </form>
+          <h3>{editMode ? 'Edit Exam' : 'Create New Exam'}</h3>
+          {editMode ? (
+            <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 500 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Exam Name</label>
+                <input
+                  name="exam_name"
+                  placeholder="e.g., Mathematics Final Exam"
+                  value={editForm.exam_name}
+                  onChange={handleEditChange}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Time</label>
+                <input
+                  type="datetime-local"
+                  name="start_time"
+                  value={editForm.start_time}
+                  onChange={handleEditChange}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Time</label>
+                <input
+                  type="datetime-local"
+                  name="end_time"
+                  value={editForm.end_time}
+                  onChange={handleEditChange}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Duration (minutes)</label>
+                <input
+                  type="number"
+                  name="duration"
+                  value={editForm.duration}
+                  onChange={handleEditChange}
+                  min={1}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+                <small style={{ color: '#666' }}>Time limit for each student to complete the exam</small>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold', flex: 1 }}>
+                  Update Exam
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMode(false);
+                    setSelectedExam(null);
+                    setEditForm({
+                      exam_name: '',
+                      start_time: '',
+                      end_time: '',
+                      duration: 60,
+                    });
+                  }}
+                  style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 500 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Exam Name</label>
+                <input
+                  name="exam_name"
+                  placeholder="e.g., Mathematics Final Exam"
+                  value={form.exam_name}
+                  onChange={handleChange}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Time</label>
+                <input
+                  type="datetime-local"
+                  name="start_time"
+                  value={form.start_time}
+                  onChange={handleChange}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Time</label>
+                <input
+                  type="datetime-local"
+                  name="end_time"
+                  value={form.end_time}
+                  onChange={handleChange}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Duration (minutes)</label>
+                <input
+                  type="number"
+                  name="duration"
+                  value={form.duration}
+                  onChange={handleChange}
+                  min={1}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+                <small style={{ color: '#666' }}>Time limit for each student to complete the exam</small>
+              </div>
+              <button type="submit" style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold' }}>
+                Create Exam
+              </button>
+            </form>
+          )}
         </div>
       )}
 
@@ -392,50 +473,24 @@ const ExamManagerDashboard = () => {
             </div>
           ) : (
             <div>
-              {editMode ? (
-                <div>
-                  <h4>Edit Exam</h4>
-                  <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 500, marginBottom: '1rem' }}>
-                    <input name="exam_name" value={editForm.exam_name} onChange={handleEditChange} required style={{ padding: '0.5rem' }} />
-                    <input type="datetime-local" name="start_time" value={editForm.start_time} onChange={handleEditChange} required style={{ padding: '0.5rem' }} />
-                    <input type="datetime-local" name="end_time" value={editForm.end_time} onChange={handleEditChange} required style={{ padding: '0.5rem' }} />
-                    <input type="number" name="duration" value={editForm.duration} onChange={handleEditChange} min={1} required style={{ padding: '0.5rem' }} />
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button type="submit" style={{ padding: '0.5rem 1rem', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                        Save Changes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditMode(false);
-                          setSelectedExam(null);
-                        }}
-                        style={{ padding: '0.5rem 1rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div>
-                      <h4>{examDetails?.exam?.exam_name || 'Loading...'}</h4>
-                      <button
-                        onClick={() => setSelectedExam(null)}
-                        style={{ padding: '0.25rem 0.75rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                      >
-                        ← Back to Exam List
-                      </button>
-                    </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div>
+                    <h4>{examDetails?.exam?.exam_name || 'Loading...'}</h4>
                     <button
-                      onClick={() => handleEdit(exams.find((e) => e._id === selectedExam))}
-                      style={{ padding: '0.5rem 1rem', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      onClick={() => setSelectedExam(null)}
+                      style={{ padding: '0.25rem 0.75rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
                     >
-                      Edit Exam
+                      ← Back to Exam List
                     </button>
                   </div>
+                  <button
+                    onClick={() => handleEdit(exams.find((e) => e._id === selectedExam))}
+                    style={{ padding: '0.5rem 1rem', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Edit Exam
+                  </button>
+                </div>
 
                   {detailsLoading ? (
                     <p>Loading exam details...</p>
@@ -546,7 +601,6 @@ const ExamManagerDashboard = () => {
                     <p>Failed to load exam details</p>
                   )}
                 </div>
-              )}
             </div>
           )}
         </div>

@@ -96,11 +96,9 @@ const deactivateExam = async (req, res) => {
 const getAvailableExams = async (req, res) => {
   try {
     const now = new Date();
-    const exams = await Exam.find({
-      is_active: true,
-      start_time: { $lte: now },
-      end_time: { $gte: now },
-    }).sort({ start_time: 1 });
+    // For demo reliability, return ALL active exams and include a computed status.
+    // Students can only start the exam within its start/end time window.
+    const exams = await Exam.find({ is_active: true }).sort({ start_time: 1 });
 
     // Check which exams the student has already attempted
     const examIds = exams.map((e) => e._id);
@@ -110,12 +108,27 @@ const getAvailableExams = async (req, res) => {
     });
 
     const attemptedExamIds = new Set(attempts.map((a) => String(a.exam_id)));
+    const attemptMap = new Map();
+    attempts.forEach((a) => {
+      attemptMap.set(String(a.exam_id), a);
+    });
 
-    const examsWithStatus = exams.map((exam) => ({
-      ...exam.toObject(),
-      attempted: attemptedExamIds.has(String(exam._id)),
-      attemptId: attempts.find((a) => String(a.exam_id) === String(exam._id))?._id,
-    }));
+    const examsWithStatus = exams.map((exam) => {
+      const attempt = attemptMap.get(String(exam._id));
+      return {
+        ...exam.toObject(),
+        status:
+          now < new Date(exam.start_time)
+            ? 'Scheduled'
+            : now > new Date(exam.end_time)
+              ? 'Ended'
+              : 'Ongoing',
+        canStart: now >= new Date(exam.start_time) && now <= new Date(exam.end_time),
+        attempted: attemptedExamIds.has(String(exam._id)),
+        attemptCompleted: attempt?.completed || false,
+        attemptId: attempt?._id,
+      };
+    });
 
     return res.json(examsWithStatus);
   } catch (error) {
@@ -146,14 +159,34 @@ const startExam = async (req, res) => {
       return res.status(400).json({ message: 'Exam not available' });
     }
 
+    const now = new Date();
+    
+    // Check if student already has an attempt
     const existing = await ExamAttempt.findOne({
       exam_id: id,
       student_id: req.user._id,
     });
+    
     if (existing) {
-      return res.status(400).json({ message: 'You have already attempted this exam' });
+      // Strict retake prevention: Once an attempt exists (even incomplete), no new attempt allowed
+      if (existing.completed) {
+        return res.status(400).json({ message: 'You have already completed this exam. You cannot retake it.' });
+      }
+      // If attempt is incomplete, allow continuing even if exam time window has passed
+      // This allows students to complete their attempt even if they closed the browser
+      // Only check if exam is still active (not deactivated)
+      if (!exam.is_active) {
+        return res.status(400).json({ message: 'This exam has been deactivated. You cannot continue your attempt.' });
+      }
+      return res.json(existing);
     }
 
+    // For new attempts, check time window
+    if (now < new Date(exam.start_time) || now > new Date(exam.end_time)) {
+      return res.status(400).json({ message: 'Exam is not within the allowed time window' });
+    }
+
+    // Create new attempt
     const attempt = await ExamAttempt.create({
       exam_id: id,
       student_id: req.user._id,

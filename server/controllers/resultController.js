@@ -35,7 +35,33 @@ const getMyResults = async (req, res) => {
     const attempts = await ExamAttempt.find({ student_id: req.user._id })
       .populate('exam_id', 'exam_name start_time end_time duration')
       .sort({ createdAt: -1 });
-    return res.json(attempts);
+    
+    // Get question counts for each exam
+    const Question = require('../models/Question');
+    const examIds = [...new Set(attempts.map(a => a.exam_id?._id || a.exam_id).filter(Boolean))];
+    const questionCounts = await Question.aggregate([
+      { $match: { exam_id: { $in: examIds } } },
+      { $group: { _id: '$exam_id', count: { $sum: 1 } } },
+    ]);
+    const questionCountMap = new Map();
+    questionCounts.forEach((qc) => {
+      questionCountMap.set(String(qc._id), qc.count);
+    });
+
+    // Add question count to each attempt
+    const attemptsWithCounts = attempts.map((attempt) => {
+      const examId = attempt.exam_id?._id || attempt.exam_id;
+      const questionCount = questionCountMap.get(String(examId)) || 0;
+      return {
+        ...attempt.toObject(),
+        exam_id: {
+          ...(attempt.exam_id?.toObject ? attempt.exam_id.toObject() : attempt.exam_id),
+          questionsCount: questionCount,
+        },
+      };
+    });
+
+    return res.json(attemptsWithCounts);
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }

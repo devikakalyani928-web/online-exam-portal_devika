@@ -17,6 +17,7 @@ const AdminDashboard = () => {
     password: '',
     role: 'Student',
   });
+  const [editingUserId, setEditingUserId] = useState(null);
   
   // Exams state
   const [exams, setExams] = useState([]);
@@ -124,22 +125,76 @@ const AdminDashboard = () => {
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
 
+  const handleEditUser = (user) => {
+    setEditingUserId(user._id);
+    setUserForm({
+      username: user.username,
+      full_name: user.full_name,
+      email: user.email,
+      password: '', // Don't pre-fill password
+      role: user.role,
+    });
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setUserForm({
+      username: '',
+      full_name: '',
+      email: '',
+      password: '',
+      role: 'Student',
+    });
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/api/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(userForm),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        const msg = body?.message || body?.errors?.[0]?.msg || 'Failed to create user';
-        throw new Error(msg);
+      if (editingUserId) {
+        // Update existing user
+        const updateData = {
+          username: userForm.username,
+          full_name: userForm.full_name,
+          email: userForm.email,
+          role: userForm.role,
+        };
+        // Only include password if it's provided
+        if (userForm.password.trim()) {
+          updateData.password = userForm.password;
+        }
+
+        const res = await fetch(`${API_BASE}/api/users/${editingUserId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updateData),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const msg = body?.message || body?.errors?.[0]?.msg || 'Failed to update user';
+          throw new Error(msg);
+        }
+        setEditingUserId(null);
+      } else {
+        // Create new user
+        const res = await fetch(`${API_BASE}/api/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(userForm),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const msg = body?.message || body?.errors?.[0]?.msg || 'Failed to create user';
+          throw new Error(msg);
+        }
       }
       setUserForm({
         username: '',
@@ -206,7 +261,7 @@ const AdminDashboard = () => {
       {activeTab === 'users' && (
         <div>
           <section style={{ marginBottom: '2rem' }}>
-            <h3>Create User</h3>
+            <h3>{editingUserId ? 'Edit User' : 'Create User'}</h3>
             <form
               onSubmit={handleCreateUser}
               style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', maxWidth: 800, marginBottom: '1rem' }}
@@ -239,10 +294,10 @@ const AdminDashboard = () => {
               <input
                 type="password"
                 name="password"
-                placeholder="Password"
+                placeholder={editingUserId ? "Password (leave blank to keep current)" : "Password"}
                 value={userForm.password}
                 onChange={handleUserFormChange}
-                required
+                required={!editingUserId}
                 style={{ padding: '0.5rem', flex: '1 1 150px' }}
               />
               <select
@@ -257,9 +312,18 @@ const AdminDashboard = () => {
                 <option value="Question Manager">Question Manager</option>
                 <option value="Result Manager">Result Manager</option>
               </select>
-              <button type="submit" style={{ padding: '0.5rem 1.5rem', cursor: 'pointer' }}>
-                Create User
+              <button type="submit" style={{ padding: '0.5rem 1.5rem', cursor: 'pointer', background: editingUserId ? '#28a745' : '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>
+                {editingUserId ? 'Update User' : 'Create User'}
               </button>
+              {editingUserId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  style={{ padding: '0.5rem 1.5rem', cursor: 'pointer', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px' }}
+                >
+                  Cancel
+                </button>
+              )}
             </form>
           </section>
 
@@ -291,9 +355,20 @@ const AdminDashboard = () => {
                         <td>{u.role}</td>
                         <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                         <td>
-                          <button onClick={() => handleDeleteUser(u._id)} style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}>
-                            Delete
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              onClick={() => handleEditUser(u)} 
+                              style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser(u._id)} 
+                              style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

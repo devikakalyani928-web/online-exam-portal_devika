@@ -290,6 +290,19 @@ const QuestionManagerDashboard = () => {
     );
   });
 
+  // Group questions by exam name (subject)
+  const groupedQuestions = filteredQuestions.reduce((acc, question) => {
+    const examName = question.exam_id?.exam_name || 'Unassigned';
+    if (!acc[examName]) {
+      acc[examName] = [];
+    }
+    acc[examName].push(question);
+    return acc;
+  }, {});
+
+  // Sort exam names alphabetically
+  const sortedExamNames = Object.keys(groupedQuestions).sort();
+
   const tabStyle = (isActive) => ({
     padding: '0.75rem 1.5rem',
     border: 'none',
@@ -524,69 +537,95 @@ const QuestionManagerDashboard = () => {
           ) : filteredQuestions.length === 0 ? (
             <p>No questions found{searchTerm && ` matching "${searchTerm}"`}.</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                      <thead style={{ background: '#f5f5f5' }}>
-                        <tr>
-                          <th>Exam</th>
-                          <th>Question</th>
-                          <th>Options</th>
-                          <th>Correct</th>
-                          <th>Created</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredQuestions.map((q) => (
-                          <tr key={q._id}>
-                            <td>{q.exam_id?.exam_name || 'N/A'}</td>
-                            <td>{q.question_text}</td>
-                            <td style={{ fontSize: '0.85rem' }}>
-                              1. {q.option1}
-                              <br />
-                              2. {q.option2}
-                              <br />
-                              3. {q.option3}
-                              <br />
-                              4. {q.option4}
-                            </td>
-                            <td>
-                              <strong style={{ color: '#28a745' }}>{q.correct_option}</strong>
-                            </td>
-                            <td>{new Date(q.createdAt).toLocaleDateString()}</td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <button
-                                  onClick={() => {
-                                    setEditingQuestion(q._id);
-                                    setEditForm({
-                                      question_text: q.question_text,
-                                      option1: q.option1,
-                                      option2: q.option2,
-                                      option3: q.option3,
-                                      option4: q.option4,
-                                      correct_option: q.correct_option,
-                                    });
-                                    setSelectedExamId(q.exam_id?._id || '');
-                                    setActiveTab('manage');
-                                    setEditMode(true);
-                                  }}
-                                  style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(q._id)}
-                                  style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {sortedExamNames.map((examName) => {
+                const questions = groupedQuestions[examName];
+                return (
+                  <div key={examName} style={{ border: '2px solid #ffc107', borderRadius: '8px', overflow: 'hidden' }}>
+                    {/* Exam Name Header */}
+                    <div
+                      style={{
+                        background: '#ffc107',
+                        color: 'black',
+                        padding: '1rem 1.5rem',
+                        fontWeight: 'bold',
+                        fontSize: '1.2rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span>{examName}</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 'normal', opacity: 0.8 }}>
+                        {questions.length} question{questions.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {/* Questions Table */}
+                    <div style={{ overflowX: 'auto' }}>
+                      <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem', margin: 0 }}>
+                        <thead style={{ background: '#f5f5f5' }}>
+                          <tr>
+                            <th style={{ width: '40%' }}>Question</th>
+                            <th style={{ width: '30%' }}>Options</th>
+                            <th style={{ width: '8%' }}>Correct</th>
+                            <th style={{ width: '12%' }}>Created</th>
+                            <th style={{ width: '10%' }}>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-              </table>
+                        </thead>
+                        <tbody>
+                          {questions.map((q) => (
+                            <tr key={q._id} style={{ background: editingQuestion === q._id ? '#fff3cd' : 'white' }}>
+                              <td>{q.question_text}</td>
+                              <td style={{ fontSize: '0.85rem' }}>
+                                1. {q.option1}
+                                <br />
+                                2. {q.option2}
+                                <br />
+                                3. {q.option3}
+                                <br />
+                                4. {q.option4}
+                              </td>
+                              <td>
+                                <strong style={{ color: '#28a745' }}>{q.correct_option}</strong>
+                              </td>
+                              <td>{new Date(q.createdAt).toLocaleDateString()}</td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <button
+                                    onClick={() => {
+                                      setEditingQuestion(q._id);
+                                      setEditForm({
+                                        question_text: q.question_text,
+                                        option1: q.option1,
+                                        option2: q.option2,
+                                        option3: q.option3,
+                                        option4: q.option4,
+                                        correct_option: q.correct_option,
+                                      });
+                                      setSelectedExamId(q.exam_id?._id || '');
+                                      setActiveTab('manage');
+                                      setEditMode(true);
+                                    }}
+                                    style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(q._id)}
+                                    style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
