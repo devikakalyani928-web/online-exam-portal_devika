@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import '../styles/StudentDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
@@ -334,158 +335,142 @@ const StudentDashboard = () => {
   const answeredCount = Object.keys(answers).length;
   const progress = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
 
-  const tabStyle = (isActive) => ({
-    padding: '0.75rem 1.5rem',
-    border: 'none',
-    background: isActive ? '#28a745' : '#f0f0f0',
-    color: isActive ? 'white' : 'black',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: isActive ? 'bold' : 'normal',
-    borderBottom: isActive ? '3px solid #1e7e34' : '3px solid transparent',
-  });
-
   return (
-    <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <h2>Student Dashboard</h2>
-      <p>Take exams and view your results</p>
+    <div className="student-dashboard">
+      <div className="dashboard-header">
+        <h2><i className="bi bi-mortarboard"></i> Student Dashboard</h2>
+        <p className="text-muted">Take exams and view your results</p>
+      </div>
 
-      {error && <p style={{ color: 'red', padding: '0.5rem', background: '#ffebee', borderRadius: '4px' }}>{error}</p>}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+        </div>
+      )}
 
       {/* Tabs */}
       {!selectedExam && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '2px solid #ddd' }}>
-          <button style={tabStyle(activeTab === 'exams')} onClick={() => setActiveTab('exams')}>
-            Available Exams
-          </button>
-          <button style={tabStyle(activeTab === 'results')} onClick={() => setActiveTab('results')}>
-            My Results
-          </button>
-        </div>
+        <ul className="nav nav-tabs student-tabs" role="tablist">
+          <li className="nav-item" role="presentation">
+            <button
+              className={`nav-link ${activeTab === 'exams' ? 'active' : ''}`}
+              onClick={() => setActiveTab('exams')}
+              type="button"
+            >
+              <i className="bi bi-file-earmark-text me-2"></i>Available Exams
+            </button>
+          </li>
+          <li className="nav-item" role="presentation">
+            <button
+              className={`nav-link ${activeTab === 'results' ? 'active' : ''}`}
+              onClick={() => setActiveTab('results')}
+              type="button"
+            >
+              <i className="bi bi-clipboard-check me-2"></i>My Results
+            </button>
+          </li>
+        </ul>
       )}
 
       {/* Exam Taking View */}
       {selectedExam && !result && (
-        <div style={{ border: '2px solid #28a745', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem' }}>
+        <div className="card exam-taking-card">
           {questionsLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div className="text-center p-5">
+              <div className="spinner-border text-success mb-3" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
               <h3>Loading Exam...</h3>
-              <p>Please wait while we load the questions.</p>
+              <p className="text-muted">Please wait while we load the questions.</p>
             </div>
           ) : questions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <h3>No Questions Available</h3>
-              <p>This exam doesn't have any questions yet. Please contact your instructor.</p>
-              <button
-                onClick={resetExam}
-                style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', marginTop: '1rem' }}
-              >
-                Go Back
+            <div className="text-center p-5">
+              <i className="bi bi-exclamation-triangle text-warning" style={{ fontSize: '3rem' }}></i>
+              <h3 className="mt-3">No Questions Available</h3>
+              <p className="text-muted">This exam doesn't have any questions yet. Please contact your instructor.</p>
+              <button className="btn btn-secondary mt-3" onClick={resetExam}>
+                <i className="bi bi-arrow-left me-2"></i>Go Back
               </button>
             </div>
           ) : (
             <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <h3 style={{ margin: 0 }}>Exam: {selectedExam.exam_name}</h3>
-              <p style={{ margin: '0.5rem 0', color: '#666' }}>
-                Duration: {selectedExam.duration} minutes | Questions: {questions.length}
-              </p>
-            </div>
-            {timeRemaining !== null && (
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: timeRemaining < 300 ? 'red' : '#28a745' }}>
-                Time Remaining: {formatTime(timeRemaining)}
+              <div className="exam-header">
+                <div>
+                  <h3>Exam: {selectedExam.exam_name}</h3>
+                  <p className="exam-meta">
+                    <i className="bi bi-clock me-2"></i>Duration: {selectedExam.duration} minutes | 
+                    <i className="bi bi-question-circle me-2 ms-2"></i>Questions: {questions.length}
+                  </p>
+                </div>
+                {timeRemaining !== null && (
+                  <div className={`timer-display ${timeRemaining < 300 ? 'warning' : ''}`}>
+                    <i className="bi bi-stopwatch me-2"></i>
+                    Time Remaining: {formatTime(timeRemaining)}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span>Progress: {answeredCount} / {questions.length} answered</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <div style={{ width: '100%', height: '20px', background: '#e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
-              <div
-                style={{
-                  width: `${progress}%`,
-                  height: '100%',
-                  background: progress === 100 ? '#28a745' : '#17a2b8',
-                  transition: 'width 0.3s',
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{ maxHeight: '60vh', overflowY: 'auto', marginBottom: '1rem' }}>
-            {questions.map((q, idx) => (
-              <div
-                key={q._id}
-                style={{
-                  marginBottom: '1.5rem',
-                  padding: '1rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  background: answers[q._id] ? '#e8f5e9' : 'white',
-                }}
-              >
-                <p style={{ fontWeight: 'bold', marginBottom: '0.75rem' }}>
-                  Question {idx + 1}: {q.question_text}
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {[1, 2, 3, 4].map((opt) => (
-                    <label
-                      key={opt}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '0.5rem',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        background: answers[q._id] === opt ? '#c8e6c9' : 'transparent',
-                        border: answers[q._id] === opt ? '2px solid #4caf50' : '1px solid #ddd',
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name={q._id}
-                        value={opt}
-                        checked={answers[q._id] === opt}
-                        onChange={() => handleAnswerChange(q._id, opt)}
-                        style={{ marginRight: '0.75rem', cursor: 'pointer' }}
-                      />
-                      <span>{q[`option${opt}`]}</span>
-                    </label>
-                  ))}
+              <div className="progress-section">
+                <div className="progress-header">
+                  <span>
+                    <i className="bi bi-check-circle me-2"></i>Progress: {answeredCount} / {questions.length} answered
+                  </span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+                <div className="progress-bar-container">
+                  <div
+                    className={`progress-bar-fill ${progress === 100 ? 'complete' : ''}`}
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button
-              onClick={resetExam}
-              style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={submitExam}
-              disabled={answeredCount === 0}
-              style={{
-                padding: '0.75rem 1.5rem',
-                cursor: answeredCount === 0 ? 'not-allowed' : 'pointer',
-                background: answeredCount === 0 ? '#ccc' : answeredCount < questions.length ? '#ff9800' : '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-              }}
-              title={answeredCount < questions.length ? `You have ${questions.length - answeredCount} unanswered question${questions.length - answeredCount > 1 ? 's' : ''}` : 'Submit your exam'}
-            >
-              Submit Exam {answeredCount < questions.length && `(${answeredCount}/${questions.length})`}
-            </button>
-          </div>
+              <div className="questions-container">
+                {questions.map((q, idx) => (
+                  <div
+                    key={q._id}
+                    className={`question-card ${answers[q._id] ? 'answered' : ''}`}
+                  >
+                    <h5>
+                      Question {idx + 1}: {q.question_text}
+                    </h5>
+                    <div>
+                      {[1, 2, 3, 4].map((opt) => (
+                        <label
+                          key={opt}
+                          className={`option-label ${answers[q._id] === opt ? 'selected' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name={q._id}
+                            value={opt}
+                            checked={answers[q._id] === opt}
+                            onChange={() => handleAnswerChange(q._id, opt)}
+                          />
+                          <span>{q[`option${opt}`]}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="exam-actions">
+                <button className="btn btn-secondary" onClick={resetExam}>
+                  <i className="bi bi-x-circle me-2"></i>Cancel
+                </button>
+                <button
+                  className={`btn ${answeredCount === 0 ? 'btn-secondary' : answeredCount < questions.length ? 'btn-warning' : 'btn-success'}`}
+                  onClick={submitExam}
+                  disabled={answeredCount === 0}
+                  title={answeredCount < questions.length ? `You have ${questions.length - answeredCount} unanswered question${questions.length - answeredCount > 1 ? 's' : ''}` : 'Submit your exam'}
+                >
+                  <i className="bi bi-check-circle me-2"></i>
+                  Submit Exam {answeredCount < questions.length && `(${answeredCount}/${questions.length})`}
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -493,23 +478,25 @@ const StudentDashboard = () => {
 
       {/* Result View */}
       {result && selectedExam && (
-        <div style={{ border: '2px solid #28a745', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', background: '#f1f8f4' }}>
-          <h3 style={{ color: '#28a745', marginTop: 0 }}>Exam Submitted Successfully!</h3>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+        <div className="card result-success-card">
+          <h3 className="text-success">
+            <i className="bi bi-check-circle-fill me-2"></i>Exam Submitted Successfully!
+          </h3>
+          <div className="score-display-large">
             Your Score: {result.total_score} / {result.total_questions}
-            <span style={{ marginLeft: '1rem', color: result.total_score >= result.total_questions / 2 ? '#28a745' : '#dc3545' }}>
+            <span className={`score-percentage ${result.total_score >= result.total_questions / 2 ? 'pass' : 'fail'}`}>
               ({Math.round((result.total_score / result.total_questions) * 100)}%)
             </span>
           </div>
-          <p style={{ color: '#666' }}>You can view detailed results in the "My Results" tab.</p>
+          <p className="text-muted">You can view detailed results in the "My Results" tab.</p>
           <button
+            className="btn btn-info mt-3"
             onClick={() => {
               resetExam();
               setActiveTab('results');
             }}
-            style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', marginTop: '1rem' }}
           >
-            View My Results
+            <i className="bi bi-clipboard-check me-2"></i>View My Results
           </button>
         </div>
       )}
@@ -517,260 +504,273 @@ const StudentDashboard = () => {
       {/* Available Exams Tab */}
       {!selectedExam && activeTab === 'exams' && (
         <div>
-          <h3>Available Exams</h3>
-          {loading ? (
-            <p>Loading exams...</p>
-          ) : exams.length === 0 ? (
-            <p>No active exams available at the moment.</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {exams.map((exam) => (
-                <div
-                  key={exam._id}
-                  style={{
-                    border: '1px solid #ddd',
-                    padding: '1.5rem',
-                    borderRadius: '8px',
-                    background: exam.attempted ? '#f5f5f5' : 'white',
-                  }}
-                >
-                  <h4 style={{ marginTop: 0 }}>{exam.exam_name}</h4>
-                  <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-                    <p>Duration: {exam.duration} minutes</p>
-                    <p>Start: {new Date(exam.start_time).toLocaleString()}</p>
-                    <p>End: {new Date(exam.end_time).toLocaleString()}</p>
-                    {exam.status && (
-                      <p>
-                        Status:{' '}
-                        <strong style={{ color: exam.status === 'Ongoing' ? 'green' : exam.status === 'Scheduled' ? '#007bff' : 'red' }}>
-                          {exam.status}
-                        </strong>
-                      </p>
-                    )}
-                  </div>
-                  {exam.attemptCompleted ? (
-                    <div>
-                      <p style={{ color: '#dc3545', fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                        You have already attempted this exam
-                      </p>
-                      <button
-                        disabled
-                        style={{
-                          padding: '0.75rem 1.5rem',
-                          cursor: 'not-allowed',
-                          background: '#ccc',
-                          color: '#666',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '1rem',
-                          fontWeight: 'bold',
-                          width: '100%',
-                          opacity: 0.6,
-                        }}
-                      >
-                        Start Exam
-                      </button>
-                    </div>
-                  ) : exam.attempted && !exam.attemptCompleted ? (
-                    <div>
-                      <p style={{ color: '#ff9800', fontWeight: 'bold', marginBottom: '0.5rem' }}>⏳ Exam In Progress</p>
-                      <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
-                        You have already started this exam. You can only continue your existing attempt.
-                      </p>
-                      <button
-                        onClick={() => startExam(exam)}
-                        style={{
-                          padding: '0.75rem 1.5rem',
-                          cursor: 'pointer',
-                          background: '#ff9800',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '1rem',
-                          fontWeight: 'bold',
-                          width: '100%',
-                        }}
-                      >
-                        Continue Exam
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => startExam(exam)}
-                      disabled={exam.canStart === false}
-                      style={{
-                        padding: '0.75rem 1.5rem',
-                        cursor: exam.canStart === false ? 'not-allowed' : 'pointer',
-                        background: exam.canStart === false ? '#ccc' : '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '1rem',
-                        fontWeight: 'bold',
-                        width: '100%',
-                      }}
-                    >
-                      {exam.canStart === false ? 'Not Available Yet' : 'Start Exam'}
-                    </button>
-                  )}
-                </div>
-              ))}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="mb-0">
+                <i className="bi bi-file-earmark-text me-2"></i>Available Exams
+              </h3>
             </div>
-          )}
+            <div className="card-body">
+              {loading ? (
+                <div className="loading-container">
+                  <div className="spinner-border text-success" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : exams.length === 0 ? (
+                <div className="empty-container">
+                  <i className="bi bi-inbox"></i>
+                  <p>No active exams available at the moment.</p>
+                </div>
+              ) : (
+                <div className="exam-cards-grid">
+                  {exams.map((exam) => (
+                    <div
+                      key={exam._id}
+                      className={`exam-card ${exam.attempted ? 'attempted' : ''}`}
+                    >
+                      <h4>{exam.exam_name}</h4>
+                      <div className="exam-info">
+                        <p>
+                          <i className="bi bi-clock me-2"></i>Duration: {exam.duration} minutes
+                        </p>
+                        <p>
+                          <i className="bi bi-calendar-event me-2"></i>Start: {new Date(exam.start_time).toLocaleString('en-GB')}
+                        </p>
+                        <p>
+                          <i className="bi bi-calendar-x me-2"></i>End: {new Date(exam.end_time).toLocaleString('en-GB')}
+                        </p>
+                        {exam.status && (
+                          <p>
+                            <i className="bi bi-info-circle me-2"></i>Status:{' '}
+                            <span className={`exam-status ${exam.status === 'Ongoing' ? 'ongoing' : exam.status === 'Scheduled' ? 'scheduled' : 'ended'}`}>
+                              {exam.status}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      {exam.attemptCompleted ? (
+                        <div>
+                          <p className="attempt-message">
+                            <i className="bi bi-exclamation-triangle me-2"></i>
+                            You have already attempted this exam
+                          </p>
+                          <button className="btn btn-secondary w-100" disabled>
+                            <i className="bi bi-lock me-2"></i>Start Exam
+                          </button>
+                        </div>
+                      ) : exam.attempted && !exam.attemptCompleted ? (
+                        <div>
+                          <p className="in-progress-message">
+                            <i className="bi bi-hourglass-split me-2"></i>Exam In Progress
+                          </p>
+                          <p className="text-muted small mb-2">
+                            You have already started this exam. You can only continue your existing attempt.
+                          </p>
+                          <button className="btn btn-warning w-100" onClick={() => startExam(exam)}>
+                            <i className="bi bi-play-circle me-2"></i>Continue Exam
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className={`btn ${exam.canStart === false ? 'btn-secondary' : 'btn-success'} w-100`}
+                          onClick={() => startExam(exam)}
+                          disabled={exam.canStart === false}
+                        >
+                          {exam.canStart === false ? (
+                            <>
+                              <i className="bi bi-clock me-2"></i>Not Available Yet
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-play-circle me-2"></i>Start Exam
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* My Results Tab */}
       {!selectedExam && activeTab === 'results' && (
         <div>
-          <h3>My Results</h3>
-          {selectedResult && resultDetails ? (
-            <div>
-              <button
-                onClick={() => {
-                  setSelectedResult(null);
-                  setResultDetails(null);
-                }}
-                style={{ padding: '0.5rem 1rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: '1rem' }}
-              >
-                ← Back to Results List
-              </button>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="mb-0">
+                <i className="bi bi-clipboard-check me-2"></i>My Results
+              </h3>
+            </div>
+            <div className="card-body">
+              {selectedResult && resultDetails ? (
+                <div>
+                  <button
+                    className="btn btn-secondary mb-3"
+                    onClick={() => {
+                      setSelectedResult(null);
+                      setResultDetails(null);
+                    }}
+                  >
+                    <i className="bi bi-arrow-left me-2"></i>Back to Results List
+                  </button>
 
-              {detailsLoading ? (
-                <p>Loading details...</p>
-              ) : (
-                <div style={{ border: '2px solid #17a2b8', padding: '1.5rem', borderRadius: '8px' }}>
-                  <h4>{resultDetails.attempt.exam_id?.exam_name}</h4>
-                  <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9f9f9', borderRadius: '4px' }}>
-                    <p>
-                      <strong>Score:</strong> {resultDetails.attempt.total_score} / {resultDetails.answers.length}
-                    </p>
-                    <p>
-                      <strong>Percentage:</strong>{' '}
-                      {Math.round((resultDetails.attempt.total_score / resultDetails.answers.length) * 100)}%
-                    </p>
-                    <p>
-                      <strong>Status:</strong>{' '}
-                      <span style={{ color: 'green', fontWeight: 'bold' }}>Completed</span>
-                    </p>
-                    <p>
-                      <strong>Submitted:</strong> {new Date(resultDetails.attempt.end_time).toLocaleString()}
-                    </p>
-                  </div>
-
-                  <h4>Your Answers:</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {resultDetails.answers.map((answer, idx) => (
-                      <div
-                        key={answer._id}
-                        style={{
-                          border: '1px solid #ddd',
-                          padding: '1rem',
-                          borderRadius: '4px',
-                          background: answer.is_correct ? '#d4edda' : '#f8d7da',
-                        }}
-                      >
-                        <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                          Question {idx + 1}: {answer.question_id?.question_text}
-                        </p>
-                        <div style={{ marginLeft: '1rem', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                          <p>1. {answer.question_id?.option1}</p>
-                          <p>2. {answer.question_id?.option2}</p>
-                          <p>3. {answer.question_id?.option3}</p>
-                          <p>4. {answer.question_id?.option4}</p>
-                        </div>
-                        <p style={{ marginTop: '0.5rem' }}>
-                          <strong>Your Answer:</strong> Option {answer.selected_option}
-                          {answer.is_correct ? (
-                            <span style={{ color: 'green', marginLeft: '0.5rem', fontWeight: 'bold' }}>✓ Correct</span>
-                          ) : (
-                            <span style={{ color: 'red', marginLeft: '0.5rem', fontWeight: 'bold' }}>
-                              ✗ Incorrect (Correct: Option {answer.question_id?.correct_option})
-                            </span>
-                          )}
-                        </p>
+                  {detailsLoading ? (
+                    <div className="loading-container">
+                      <div className="spinner-border text-info" role="status">
+                        <span className="visually-hidden">Loading...</span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="card result-details-card">
+                      <div className="card-header">
+                        <h4 className="mb-0">{resultDetails.attempt.exam_id?.exam_name}</h4>
+                      </div>
+                      <div className="card-body">
+                        <div className="result-details-header">
+                          <div className="row">
+                            <div className="col-md-6 mb-2">
+                              <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {resultDetails.attempt.total_score} / {resultDetails.answers.length}
+                            </div>
+                            <div className="col-md-6 mb-2">
+                              <strong><i className="bi bi-percent me-2"></i>Percentage:</strong>{' '}
+                              {Math.round((resultDetails.attempt.total_score / resultDetails.answers.length) * 100)}%
+                            </div>
+                            <div className="col-md-6 mb-2">
+                              <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
+                              <span className="status-badge status-completed">
+                                <i className="bi bi-check-circle me-1"></i>Completed
+                              </span>
+                            </div>
+                            <div className="col-md-6 mb-2">
+                              <strong><i className="bi bi-calendar-check me-2"></i>Submitted:</strong> {new Date(resultDetails.attempt.end_time).toLocaleString('en-GB')}
+                            </div>
+                          </div>
+                        </div>
+
+                        <h4 className="mt-4 mb-3">
+                          <i className="bi bi-list-ul me-2"></i>Your Answers:
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          {resultDetails.answers.map((answer, idx) => (
+                            <div
+                              key={answer._id}
+                              className={`answer-review-card ${answer.is_correct ? 'correct' : 'incorrect'}`}
+                            >
+                              <p className="fw-bold mb-2">
+                                Question {idx + 1}: {answer.question_id?.question_text}
+                              </p>
+                              <div className="answer-review-options">
+                                <p>1. {answer.question_id?.option1}</p>
+                                <p>2. {answer.question_id?.option2}</p>
+                                <p>3. {answer.question_id?.option3}</p>
+                                <p>4. {answer.question_id?.option4}</p>
+                              </div>
+                              <p className="answer-review-result mt-2">
+                                <strong>Your Answer:</strong> Option {answer.selected_option}
+                                {answer.is_correct ? (
+                                  <span className="correct ms-2">
+                                    <i className="bi bi-check-circle-fill me-1"></i>Correct
+                                  </span>
+                                ) : (
+                                  <span className="incorrect ms-2">
+                                    <i className="bi bi-x-circle-fill me-1"></i>Incorrect (Correct: Option {answer.question_id?.correct_option})
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <>
+                  {myResults.length === 0 ? (
+                    <div className="empty-container">
+                      <i className="bi bi-inbox"></i>
+                      <p>No exam attempts yet. Start taking exams from the "Available Exams" tab!</p>
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>Exam</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {myResults.map((att) => {
+                            // Get total questions count from exam
+                            const totalQuestions = att.exam_id?.questionsCount || 0;
+                            const scoreDisplay = att.completed && att.total_score !== undefined 
+                              ? totalQuestions > 0 
+                                ? `${att.total_score} / ${totalQuestions}`
+                                : `${att.total_score}`
+                              : '-';
+                            const percentage = att.completed && totalQuestions > 0 && att.total_score !== undefined
+                              ? Math.round((att.total_score / totalQuestions) * 100)
+                              : null;
+                            const isPassing = percentage !== null && percentage >= 50;
+
+                            return (
+                              <tr key={att._id}>
+                                <td>{att.exam_id?.exam_name || 'N/A'}</td>
+                                <td>
+                                  {att.completed ? (
+                                    <div>
+                                      <strong className={`score-display ${isPassing ? 'score-pass' : 'score-fail'}`}>
+                                        {scoreDisplay}
+                                      </strong>
+                                      {percentage !== null && (
+                                        <span className="text-muted ms-2" style={{ fontSize: '0.85rem' }}>
+                                          ({percentage}%)
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td>
+                                  <span className={`status-badge ${att.completed ? 'status-completed' : 'status-pending'}`}>
+                                    <i className={`bi ${att.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                    {att.completed ? 'Completed' : 'In Progress'}
+                                  </span>
+                                </td>
+                                <td>{new Date(att.createdAt).toLocaleString('en-GB')}</td>
+                                <td>
+                                  {att.completed ? (
+                                    <button
+                                      className="btn btn-sm btn-info"
+                                      onClick={() => setSelectedResult(att._id)}
+                                    >
+                                      <i className="bi bi-eye me-1"></i>View Details
+                                    </button>
+                                  ) : (
+                                    <span className="text-muted" style={{ fontSize: '0.85rem' }}>Not completed</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          ) : (
-            <>
-              {myResults.length === 0 ? (
-                <p>No exam attempts yet. Start taking exams from the "Available Exams" tab!</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                    <thead style={{ background: '#f5f5f5' }}>
-                      <tr>
-                        <th>Exam</th>
-                        <th>Score</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {myResults.map((att) => {
-                        // Get total questions count from exam
-                        const totalQuestions = att.exam_id?.questionsCount || 0;
-                        const scoreDisplay = att.completed && att.total_score !== undefined 
-                          ? totalQuestions > 0 
-                            ? `${att.total_score} / ${totalQuestions}`
-                            : `${att.total_score}`
-                          : '-';
-                        const percentage = att.completed && totalQuestions > 0 && att.total_score !== undefined
-                          ? Math.round((att.total_score / totalQuestions) * 100)
-                          : null;
-                        const isPassing = percentage !== null && percentage >= 50;
-
-                        return (
-                          <tr key={att._id}>
-                            <td>{att.exam_id?.exam_name || 'N/A'}</td>
-                            <td>
-                              {att.completed ? (
-                                <div>
-                                  <strong style={{ color: isPassing ? 'green' : 'red' }}>
-                                    {scoreDisplay}
-                                  </strong>
-                                  {percentage !== null && (
-                                    <span style={{ marginLeft: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
-                                      ({percentage}%)
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                '-'
-                              )}
-                            </td>
-                            <td>
-                              <span style={{ color: att.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
-                                {att.completed ? 'Completed' : 'In Progress'}
-                              </span>
-                            </td>
-                            <td>{new Date(att.createdAt).toLocaleString()}</td>
-                            <td>
-                              {att.completed ? (
-                                <button
-                                  onClick={() => setSelectedResult(att._id)}
-                                  style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                                >
-                                  View Details
-                                </button>
-                              ) : (
-                                <span style={{ color: '#666', fontSize: '0.85rem' }}>Not completed</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
+          </div>
         </div>
       )}
     </div>

@@ -1,0 +1,233 @@
+/* Authentication Pages Styles */
+
+.auth-container {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.auth-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 450px;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-header i {
+  font-size: 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.auth-header h2 {
+  color: #212529;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.auth-header p {
+  color: #6c757d;
+  margin-bottom: 0;
+}
+
+.auth-form {
+  margin-top: 1.5rem;
+}
+
+.auth-form .form-label {
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form .form-control,
+.auth-form .form-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.auth-form .form-control:focus,
+.auth-form .form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+}
+
+.auth-form .input-group {
+  position: relative;
+}
+
+.auth-form .input-group i {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  z-index: 10;
+}
+
+.auth-form .input-group .form-control {
+  padding-left: 2.5rem;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  transition: all 0.2s ease-in-out;
+  margin-top: 1rem;
+}
+
+.auth-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  color: white;
+}
+
+.auth-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  color: #6c757d;
+}
+
+.auth-footer a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease-in-out;
+}
+
+.auth-footer a:hover {
+  color: #764ba2;
+}
+
+.auth-alert {
+  margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+}
+
+/* Home Page Styles */
+.home-hero {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 1rem;
+  margin-bottom: 3rem;
+}
+
+.home-hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.home-hero p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+}
+
+.home-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.home-action-btn {
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: all 0.2s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.home-action-btn-primary {
+  background-color: white;
+  color: #667eea;
+}
+
+.home-action-btn-primary:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  color: #667eea;
+}
+
+.home-action-btn-outline {
+  background-color: transparent;
+  border: 2px solid white;
+  color: white;
+}
+
+.home-action-btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .auth-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .home-hero h1 {
+    font-size: 2rem;
+  }
+  
+  .home-hero p {
+    font-size: 1rem;
+  }
+  
+  .home-actions {
+    flex-direction: column;
+  }
+  
+  .home-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

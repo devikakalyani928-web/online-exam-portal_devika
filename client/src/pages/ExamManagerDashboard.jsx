@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import '../styles/ExamManagerDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
@@ -59,6 +60,17 @@ const ExamManagerDashboard = () => {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
+
+      // Handle 404 (exam not found) gracefully
+      if (detailsRes.status === 404 || attemptsRes.status === 404 || ongoingRes.status === 404) {
+        setExamDetails(null);
+        setAllAttempts([]);
+        setOngoingAttempts([]);
+        setSelectedExam(null);
+        setActiveTab('overview');
+        setDetailsLoading(false);
+        return;
+      }
 
       if (!detailsRes.ok || !attemptsRes.ok || !ongoingRes.ok) {
         throw new Error('Failed to load exam details');
@@ -193,414 +205,528 @@ const ExamManagerDashboard = () => {
     }
   };
 
+  const handleDelete = async (exam) => {
+    if (!window.confirm('Are you sure you want to delete this exam?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/exams/${exam._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = body?.message || 'Failed to delete exam';
+        throw new Error(msg);
+      }
+      
+      const data = await res.json();
+      setError('');
+      
+      // If the deleted exam was being monitored, clear the selection and details first
+      if (selectedExam === exam._id) {
+        setSelectedExam(null);
+        setActiveTab('overview');
+        setExamDetails(null);
+        setAllAttempts([]);
+        setOngoingAttempts([]);
+      }
+      
+      // Refresh the exams list
+      fetchExams();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const getExamStatus = (exam) => {
     const now = new Date();
     const start = new Date(exam.start_time);
     const end = new Date(exam.end_time);
 
-    if (!exam.is_active) return { text: 'Inactive', color: 'gray' };
-    if (now < start) return { text: 'Scheduled', color: 'blue' };
-    if (now >= start && now <= end) return { text: 'Active', color: 'green' };
-    return { text: 'Ended', color: 'red' };
+    if (!exam.is_active) return { text: 'Inactive', type: 'inactive' };
+    if (now < start) return { text: 'Scheduled', type: 'scheduled' };
+    if (now >= start && now <= end) return { text: 'Active', type: 'active' };
+    return { text: 'Ended', type: 'ended' };
   };
 
-  const tabStyle = (isActive) => ({
-    padding: '0.75rem 1.5rem',
-    border: 'none',
-    background: isActive ? '#28a745' : '#f0f0f0',
-    color: isActive ? 'white' : 'black',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: isActive ? 'bold' : 'normal',
-    borderBottom: isActive ? '3px solid #1e7e34' : '3px solid transparent',
-  });
-
   return (
-    <div style={{ padding: '1rem', maxWidth: '1400px', margin: '0 auto' }}>
-      <h2>Exam Manager Dashboard</h2>
-      <p>Create, schedule, activate/deactivate, and monitor exams</p>
+    <div className="exam-manager-dashboard">
+      <div className="dashboard-header">
+        <h2><i className="bi bi-file-earmark-text"></i> Exam Manager Dashboard</h2>
+        <p className="text-muted">Create, schedule, activate/deactivate, and monitor exams</p>
+      </div>
 
-      {error && <p style={{ color: 'red', padding: '0.5rem', background: '#ffebee', borderRadius: '4px' }}>{error}</p>}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+        </div>
+      )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '2px solid #ddd' }}>
-        <button style={tabStyle(activeTab === 'overview')} onClick={() => setActiveTab('overview')}>
-          Exam Overview
-        </button>
-        <button style={tabStyle(activeTab === 'create')} onClick={() => setActiveTab('create')}>
-          Create Exam
-        </button>
-        <button style={tabStyle(activeTab === 'monitor')} onClick={() => setActiveTab('monitor')}>
-          Monitor Exams
-        </button>
-      </div>
+      <ul className="nav nav-tabs exam-manager-tabs" role="tablist">
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+            type="button"
+          >
+            <i className="bi bi-list-ul me-2"></i>Exam Overview
+          </button>
+        </li>
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'create' ? 'active' : ''}`}
+            onClick={() => setActiveTab('create')}
+            type="button"
+          >
+            <i className="bi bi-plus-circle me-2"></i>Create Exam
+          </button>
+        </li>
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'monitor' ? 'active' : ''}`}
+            onClick={() => setActiveTab('monitor')}
+            type="button"
+          >
+            <i className="bi bi-eye me-2"></i>Monitor Exams
+          </button>
+        </li>
+      </ul>
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div>
-          <h3>All Exams ({exams.length})</h3>
-          {loading ? (
-            <p>Loading exams...</p>
-          ) : exams.length === 0 ? (
-            <p>No exams found. Create your first exam!</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                <thead style={{ background: '#f5f5f5' }}>
-                  <tr>
-                    <th>Exam Name</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                    <th>Duration (min)</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {exams.map((exam) => {
-                    const status = getExamStatus(exam);
-                    return (
-                      <tr key={exam._id}>
-                        <td>
-                          <strong>{exam.exam_name}</strong>
-                        </td>
-                        <td>{new Date(exam.start_time).toLocaleString()}</td>
-                        <td>{new Date(exam.end_time).toLocaleString()}</td>
-                        <td>{exam.duration}</td>
-                        <td>
-                          <span style={{ color: status.color, fontWeight: 'bold' }}>{status.text}</span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <button
-                              onClick={() => handleEdit(exam)}
-                              style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleToggleActive(exam._id, exam.is_active)}
-                              style={{
-                                padding: '0.25rem 0.75rem',
-                                cursor: 'pointer',
-                                background: exam.is_active ? '#dc3545' : '#28a745',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontSize: '0.85rem',
-                              }}
-                            >
-                              {exam.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedExam(exam._id);
-                                setActiveTab('monitor');
-                              }}
-                              style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                            >
-                              Monitor
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="mb-0">
+                <i className="bi bi-file-earmark-text-fill me-2"></i>All Exams ({exams.length})
+              </h3>
             </div>
-          )}
+            <div className="card-body">
+              {loading ? (
+                <div className="loading-container">
+                  <div className="spinner-border text-success" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : exams.length === 0 ? (
+                <div className="empty-container">
+                  <i className="bi bi-inbox"></i>
+                  <p>No exams found. Create your first exam!</p>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Exam Name</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Duration (min)</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exams.map((exam) => {
+                        const status = getExamStatus(exam);
+                        return (
+                          <tr key={exam._id}>
+                            <td><strong>{exam.exam_name}</strong></td>
+                            <td>{new Date(exam.start_time).toLocaleString('en-GB')}</td>
+                            <td>{new Date(exam.end_time).toLocaleString('en-GB')}</td>
+                            <td>{exam.duration}</td>
+                            <td>
+                              <span className={`exam-status-badge exam-status-${status.type}`}>
+                                <i className={`bi ${status.type === 'active' ? 'bi-check-circle' : status.type === 'scheduled' ? 'bi-clock' : status.type === 'ended' ? 'bi-x-circle' : 'bi-pause-circle'} me-1`}></i>
+                                {status.text}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="table-actions">
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => handleEdit(exam)}
+                                >
+                                  <i className="bi bi-pencil me-1"></i>Edit
+                                </button>
+                                <button
+                                  className={`btn btn-sm ${exam.is_active ? 'btn-danger' : 'btn-success'}`}
+                                  onClick={() => handleToggleActive(exam._id, exam.is_active)}
+                                >
+                                  <i className={`bi ${exam.is_active ? 'bi-pause' : 'bi-play'} me-1`}></i>
+                                  {exam.is_active ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-info"
+                                  onClick={() => {
+                                    setSelectedExam(exam._id);
+                                    setActiveTab('monitor');
+                                  }}
+                                >
+                                  <i className="bi bi-eye me-1"></i>Monitor
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => handleDelete(exam)}
+                                >
+                                  <i className="bi bi-trash me-1"></i>Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Create Tab */}
       {activeTab === 'create' && (
         <div>
-          <h3>{editMode ? 'Edit Exam' : 'Create New Exam'}</h3>
-          {editMode ? (
-            <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 500 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Exam Name</label>
-                <input
-                  name="exam_name"
-                  placeholder="e.g., Mathematics Final Exam"
-                  value={editForm.exam_name}
-                  onChange={handleEditChange}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Time</label>
-                <input
-                  type="datetime-local"
-                  name="start_time"
-                  value={editForm.start_time}
-                  onChange={handleEditChange}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Time</label>
-                <input
-                  type="datetime-local"
-                  name="end_time"
-                  value={editForm.end_time}
-                  onChange={handleEditChange}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Duration (minutes)</label>
-                <input
-                  type="number"
-                  name="duration"
-                  value={editForm.duration}
-                  onChange={handleEditChange}
-                  min={1}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-                <small style={{ color: '#666' }}>Time limit for each student to complete the exam</small>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold', flex: 1 }}>
-                  Update Exam
+          <div className="card exam-form-card">
+            <h3>
+              <i className={`bi ${editMode ? 'bi-pencil-square' : 'bi-plus-circle'} me-2`}></i>
+              {editMode ? 'Edit Exam' : 'Create New Exam'}
+            </h3>
+            {editMode ? (
+              <form onSubmit={handleUpdate}>
+                <div className="mb-3">
+                  <label htmlFor="edit_exam_name" className="form-label">Exam Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="edit_exam_name"
+                    name="exam_name"
+                    placeholder="e.g., Mathematics Final Exam"
+                    value={editForm.exam_name}
+                    onChange={handleEditChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="edit_start_time" className="form-label">Start Time</label>
+                  <input
+                    type="datetime-local"
+                    className="form-control"
+                    id="edit_start_time"
+                    name="start_time"
+                    value={editForm.start_time}
+                    onChange={handleEditChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="edit_end_time" className="form-label">End Time</label>
+                  <input
+                    type="datetime-local"
+                    className="form-control"
+                    id="edit_end_time"
+                    name="end_time"
+                    value={editForm.end_time}
+                    onChange={handleEditChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="edit_duration" className="form-label">Duration (minutes)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    id="edit_duration"
+                    name="duration"
+                    value={editForm.duration}
+                    onChange={handleEditChange}
+                    min={1}
+                    required
+                  />
+                  <small className="form-text text-muted">Time limit for each student to complete the exam</small>
+                </div>
+                <div className="d-flex gap-2">
+                  <button type="submit" className="btn btn-success flex-fill">
+                    <i className="bi bi-check-circle me-2"></i>Update Exam
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setEditMode(false);
+                      setSelectedExam(null);
+                      setEditForm({
+                        exam_name: '',
+                        start_time: '',
+                        end_time: '',
+                        duration: 60,
+                      });
+                    }}
+                  >
+                    <i className="bi bi-x-circle me-2"></i>Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleCreate}>
+                <div className="mb-3">
+                  <label htmlFor="exam_name" className="form-label">Exam Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="exam_name"
+                    name="exam_name"
+                    placeholder="e.g., Mathematics Final Exam"
+                    value={form.exam_name}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="start_time" className="form-label">Start Time</label>
+                  <input
+                    type="datetime-local"
+                    className="form-control"
+                    id="start_time"
+                    name="start_time"
+                    value={form.start_time}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="end_time" className="form-label">End Time</label>
+                  <input
+                    type="datetime-local"
+                    className="form-control"
+                    id="end_time"
+                    name="end_time"
+                    value={form.end_time}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="duration" className="form-label">Duration (minutes)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    id="duration"
+                    name="duration"
+                    value={form.duration}
+                    onChange={handleChange}
+                    min={1}
+                    required
+                  />
+                  <small className="form-text text-muted">Time limit for each student to complete the exam</small>
+                </div>
+                <button type="submit" className="btn btn-success">
+                  <i className="bi bi-plus-circle me-2"></i>Create Exam
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditMode(false);
-                    setSelectedExam(null);
-                    setEditForm({
-                      exam_name: '',
-                      start_time: '',
-                      end_time: '',
-                      duration: 60,
-                    });
-                  }}
-                  style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 500 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Exam Name</label>
-                <input
-                  name="exam_name"
-                  placeholder="e.g., Mathematics Final Exam"
-                  value={form.exam_name}
-                  onChange={handleChange}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Time</label>
-                <input
-                  type="datetime-local"
-                  name="start_time"
-                  value={form.start_time}
-                  onChange={handleChange}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Time</label>
-                <input
-                  type="datetime-local"
-                  name="end_time"
-                  value={form.end_time}
-                  onChange={handleChange}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Duration (minutes)</label>
-                <input
-                  type="number"
-                  name="duration"
-                  value={form.duration}
-                  onChange={handleChange}
-                  min={1}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-                />
-                <small style={{ color: '#666' }}>Time limit for each student to complete the exam</small>
-              </div>
-              <button type="submit" style={{ padding: '0.75rem 1.5rem', cursor: 'pointer', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold' }}>
-                Create Exam
-              </button>
-            </form>
-          )}
+              </form>
+            )}
+          </div>
         </div>
       )}
 
       {/* Monitor Tab */}
       {activeTab === 'monitor' && (
         <div>
-          <h3>Monitor Exams</h3>
           {!selectedExam ? (
             <div>
-              <p>Select an exam to monitor:</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 600 }}>
-                {exams.map((exam) => (
-                  <button
-                    key={exam._id}
-                    onClick={() => setSelectedExam(exam._id)}
-                    style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      background: selectedExam === exam._id ? '#e7f3ff' : 'white',
-                    }}
-                  >
-                    <strong>{exam.exam_name}</strong>
-                    <br />
-                    <small>{new Date(exam.start_time).toLocaleString()} - {new Date(exam.end_time).toLocaleString()}</small>
-                  </button>
-                ))}
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="mb-0">
+                    <i className="bi bi-eye me-2"></i>Monitor Exams
+                  </h3>
+                </div>
+                <div className="card-body">
+                  <p className="text-muted">Select an exam to monitor:</p>
+                  <div className="monitor-exam-selector">
+                    {exams.map((exam) => (
+                      <div
+                        key={exam._id}
+                        className={`exam-selector-card ${selectedExam === exam._id ? 'selected' : ''}`}
+                        onClick={() => setSelectedExam(exam._id)}
+                      >
+                        <h5>{exam.exam_name}</h5>
+                        <small className="text-muted">
+                          {new Date(exam.start_time).toLocaleString('en-GB')} - {new Date(exam.end_time).toLocaleString('en-GB')}
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
             <div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <div>
-                    <h4>{examDetails?.exam?.exam_name || 'Loading...'}</h4>
+              <div className="card">
+                <div className="card-body">
+                  <div className="monitor-header">
+                    <div>
+                      <h4>
+                        <i className="bi bi-file-earmark-text me-2"></i>
+                        {examDetails?.exam?.exam_name || 'Loading...'}
+                      </h4>
+                      <button
+                        className="btn btn-sm btn-secondary mt-2"
+                        onClick={() => setSelectedExam(null)}
+                      >
+                        <i className="bi bi-arrow-left me-1"></i>Back to Exam List
+                      </button>
+                    </div>
                     <button
-                      onClick={() => setSelectedExam(null)}
-                      style={{ padding: '0.25rem 0.75rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
+                      className="btn btn-primary"
+                      onClick={() => handleEdit(exams.find((e) => e._id === selectedExam))}
                     >
-                      ← Back to Exam List
+                      <i className="bi bi-pencil me-2"></i>Edit Exam
                     </button>
                   </div>
-                  <button
-                    onClick={() => handleEdit(exams.find((e) => e._id === selectedExam))}
-                    style={{ padding: '0.5rem 1rem', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Edit Exam
-                  </button>
-                </div>
 
                   {detailsLoading ? (
-                    <p>Loading exam details...</p>
+                    <div className="loading-container">
+                      <div className="spinner-border text-success" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                    </div>
                   ) : examDetails ? (
                     <div>
                       {/* Exam Stats */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                        <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                          <div style={{ fontSize: '0.9rem', color: '#666' }}>Questions</div>
-                          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#007bff' }}>{examDetails.questionsCount}</div>
+                      <div className="exam-stats-grid">
+                        <div className="exam-stat-card">
+                          <div className="exam-stat-label">Questions</div>
+                          <div className="exam-stat-value primary">{examDetails.questionsCount}</div>
                         </div>
-                        <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                          <div style={{ fontSize: '0.9rem', color: '#666' }}>Total Attempts</div>
-                          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#17a2b8' }}>{examDetails.attempts.total}</div>
+                        <div className="exam-stat-card">
+                          <div className="exam-stat-label">Total Attempts</div>
+                          <div className="exam-stat-value info">{examDetails.attempts.total}</div>
                         </div>
-                        <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                          <div style={{ fontSize: '0.9rem', color: '#666' }}>Completed</div>
-                          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#28a745' }}>{examDetails.attempts.completed}</div>
+                        <div className="exam-stat-card">
+                          <div className="exam-stat-label">Completed</div>
+                          <div className="exam-stat-value success">{examDetails.attempts.completed}</div>
                         </div>
-                        <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                          <div style={{ fontSize: '0.9rem', color: '#666' }}>Ongoing</div>
-                          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffc107' }}>{examDetails.attempts.ongoing}</div>
+                        <div className="exam-stat-card">
+                          <div className="exam-stat-label">Ongoing</div>
+                          <div className="exam-stat-value warning">{examDetails.attempts.ongoing}</div>
                         </div>
-                        <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                          <div style={{ fontSize: '0.9rem', color: '#666' }}>Average Score</div>
-                          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#6f42c1' }}>{examDetails.attempts.averageScore}</div>
+                        <div className="exam-stat-card">
+                          <div className="exam-stat-label">Average Score</div>
+                          <div className="exam-stat-value purple">{examDetails.attempts.averageScore}</div>
                         </div>
                       </div>
 
                       {/* Ongoing Attempts */}
-                      <div style={{ marginBottom: '2rem' }}>
-                        <h4>Ongoing Attempts ({ongoingAttempts.length})</h4>
-                        {ongoingAttempts.length === 0 ? (
-                          <p>No ongoing attempts</p>
-                        ) : (
-                          <div style={{ overflowX: 'auto' }}>
-                            <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                              <thead style={{ background: '#f5f5f5' }}>
-                                <tr>
-                                  <th>Student</th>
-                                  <th>Email</th>
-                                  <th>Started At</th>
-                                  <th>Duration</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {ongoingAttempts.map((attempt) => {
-                                  const duration = Math.floor((new Date() - new Date(attempt.start_time)) / 60000);
-                                  return (
-                                    <tr key={attempt._id}>
-                                      <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
-                                      <td>{attempt.student_id?.email}</td>
-                                      <td>{new Date(attempt.start_time).toLocaleString()}</td>
-                                      <td>{duration} minutes</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
+                      <div className="card mb-4">
+                        <div className="card-header">
+                          <h5 className="mb-0">
+                            <i className="bi bi-clock-history me-2"></i>Ongoing Attempts ({ongoingAttempts.length})
+                          </h5>
+                        </div>
+                        <div className="card-body">
+                          {ongoingAttempts.length === 0 ? (
+                            <div className="empty-container">
+                              <i className="bi bi-inbox"></i>
+                              <p>No ongoing attempts</p>
+                            </div>
+                          ) : (
+                            <div className="table-responsive">
+                              <table className="table table-hover">
+                                <thead>
+                                  <tr>
+                                    <th>Student</th>
+                                    <th>Email</th>
+                                    <th>Started At</th>
+                                    <th>Duration</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ongoingAttempts.map((attempt) => {
+                                    const duration = Math.floor((new Date() - new Date(attempt.start_time)) / 60000);
+                                    return (
+                                      <tr key={attempt._id}>
+                                        <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
+                                        <td>{attempt.student_id?.email}</td>
+                                        <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
+                                        <td>{duration} minutes</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* All Attempts */}
-                      <div>
-                        <h4>All Attempts</h4>
-                        {allAttempts.length === 0 ? (
-                          <p>No attempts yet</p>
-                        ) : (
-                          <div style={{ overflowX: 'auto' }}>
-                            <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                              <thead style={{ background: '#f5f5f5' }}>
-                                <tr>
-                                  <th>Student</th>
-                                  <th>Email</th>
-                                  <th>Start Time</th>
-                                  <th>End Time</th>
-                                  <th>Score</th>
-                                  <th>Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {allAttempts.map((attempt) => (
-                                  <tr key={attempt._id}>
-                                    <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
-                                    <td>{attempt.student_id?.email}</td>
-                                    <td>{new Date(attempt.start_time).toLocaleString()}</td>
-                                    <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString() : '-'}</td>
-                                    <td>
-                                      <strong style={{ color: attempt.completed ? (attempt.total_score >= examDetails.questionsCount / 2 ? 'green' : 'red') : '#666' }}>
-                                        {attempt.completed ? `${attempt.total_score} / ${examDetails.questionsCount}` : '-'}
-                                      </strong>
-                                    </td>
-                                    <td>
-                                      <span style={{ color: attempt.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
-                                        {attempt.completed ? 'Completed' : 'In Progress'}
-                                      </span>
-                                    </td>
+                      <div className="card">
+                        <div className="card-header">
+                          <h5 className="mb-0">
+                            <i className="bi bi-list-check me-2"></i>All Attempts
+                          </h5>
+                        </div>
+                        <div className="card-body">
+                          {allAttempts.length === 0 ? (
+                            <div className="empty-container">
+                              <i className="bi bi-inbox"></i>
+                              <p>No attempts yet</p>
+                            </div>
+                          ) : (
+                            <div className="table-responsive">
+                              <table className="table table-hover">
+                                <thead>
+                                  <tr>
+                                    <th>Student</th>
+                                    <th>Email</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Score</th>
+                                    <th>Status</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
+                                </thead>
+                                <tbody>
+                                  {allAttempts.map((attempt) => (
+                                    <tr key={attempt._id}>
+                                      <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
+                                      <td>{attempt.student_id?.email}</td>
+                                      <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
+                                      <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
+                                      <td>
+                                        <strong className={`score-display ${attempt.completed ? (attempt.total_score >= examDetails.questionsCount / 2 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                                          {attempt.completed ? `${attempt.total_score} / ${examDetails.questionsCount}` : '-'}
+                                        </strong>
+                                      </td>
+                                      <td>
+                                        <span className={`status-badge ${attempt.completed ? 'status-completed' : 'status-pending'}`}>
+                                          <i className={`bi ${attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                          {attempt.completed ? 'Completed' : 'In Progress'}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <p>Failed to load exam details</p>
+                    <div className="empty-container">
+                      <i className="bi bi-exclamation-triangle"></i>
+                      <p>Failed to load exam details</p>
+                    </div>
                   )}
                 </div>
+              </div>
             </div>
           )}
         </div>

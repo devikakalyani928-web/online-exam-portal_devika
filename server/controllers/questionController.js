@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
 const Question = require('../models/Question');
+const StudentAnswer = require('../models/StudentAnswer');
+const ExamAttempt = require('../models/ExamAttempt');
 
 // POST /api/questions
 const createQuestion = async (req, res) => {
@@ -71,9 +73,38 @@ const deleteQuestion = async (req, res) => {
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
     }
+
+    // Find all student answers associated with this question
+    const answers = await StudentAnswer.find({ question_id: id });
+    const attemptIds = [...new Set(answers.map(answer => String(answer.attempt_id)))];
+
+    // Delete all student answers for this question
+    const deleteAnswersResult = await StudentAnswer.deleteMany({ question_id: id });
+
+    // Recalculate scores for affected exam attempts
+    if (attemptIds.length > 0) {
+      for (const attemptId of attemptIds) {
+        const attempt = await ExamAttempt.findById(attemptId);
+        if (attempt && attempt.completed) {
+          // Recalculate score based on remaining valid answers
+          const remainingAnswers = await StudentAnswer.find({ 
+            attempt_id: attemptId,
+            is_correct: true 
+          });
+          attempt.total_score = remainingAnswers.length;
+          await attempt.save();
+        }
+      }
+    }
+
     await question.deleteOne();
-    return res.json({ message: 'Question deleted' });
+    return res.json({ 
+      message: 'Question deleted',
+      deletedAnswersCount: deleteAnswersResult.deletedCount,
+      affectedAttemptsCount: attemptIds.length,
+    });
   } catch (error) {
+    console.error('Error deleting question:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };

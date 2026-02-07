@@ -346,6 +346,44 @@ const getOngoingAttempts = async (req, res) => {
   }
 };
 
+// DELETE /api/exams/:id (Exam Manager) - Delete exam and all associated data
+const deleteExam = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+
+    // Find all exam attempts associated with this exam
+    const attempts = await ExamAttempt.find({ exam_id: id });
+    const attemptIds = attempts.map(attempt => attempt._id);
+
+    // Delete all student answers associated with these attempts
+    const deleteAnswersResult = await StudentAnswer.deleteMany({ attempt_id: { $in: attemptIds } });
+
+    // Delete all exam attempts associated with this exam
+    const deleteAttemptsResult = await ExamAttempt.deleteMany({ exam_id: id });
+
+    // Delete all questions associated with this exam
+    const deleteQuestionsResult = await Question.deleteMany({ exam_id: id });
+    
+    // Delete the exam
+    await Exam.findByIdAndDelete(id);
+
+    return res.json({
+      message: 'Exam and all associated data deleted successfully',
+      deletedExam: exam.exam_name,
+      deletedQuestionsCount: deleteQuestionsResult.deletedCount,
+      deletedAttemptsCount: deleteAttemptsResult.deletedCount,
+      deletedAnswersCount: deleteAnswersResult.deletedCount,
+    });
+  } catch (error) {
+    console.error('Error deleting exam:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createExam,
   getExams,
@@ -359,6 +397,7 @@ module.exports = {
   getExamDetails,
   getExamAttempts,
   getOngoingAttempts,
+  deleteExam,
 };
 
 

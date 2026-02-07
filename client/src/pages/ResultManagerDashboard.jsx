@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import '../styles/ResultManagerDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
@@ -159,50 +160,69 @@ const ResultManagerDashboard = () => {
     }
   }, [selectedExamForReport, activeTab, token]);
 
-  const tabStyle = (isActive) => ({
-    padding: '0.75rem 1.5rem',
-    border: 'none',
-    background: isActive ? '#17a2b8' : '#f0f0f0',
-    color: isActive ? 'white' : 'black',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: isActive ? 'bold' : 'normal',
-    borderBottom: isActive ? '3px solid #138496' : '3px solid transparent',
-  });
-
   return (
-    <div style={{ padding: '1rem', maxWidth: '1400px', margin: '0 auto' }}>
-      <h2>Result Manager Dashboard</h2>
-      <p>View, verify, and generate result summaries and reports (Read-only access)</p>
+    <div className="result-manager-dashboard">
+      <div className="dashboard-header">
+        <h2><i className="bi bi-clipboard-data"></i> Result Manager Dashboard</h2>
+        <p className="text-muted">View, verify, and generate result summaries and reports (Read-only access)</p>
+      </div>
 
-      {error && <p style={{ color: 'red', padding: '0.5rem', background: '#ffebee', borderRadius: '4px' }}>{error}</p>}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+        </div>
+      )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '2px solid #ddd' }}>
-        <button style={tabStyle(activeTab === 'allResults')} onClick={() => setActiveTab('allResults')}>
-          All Results
-        </button>
-        <button style={tabStyle(activeTab === 'statistics')} onClick={() => setActiveTab('statistics')}>
-          Statistics
-        </button>
-        <button style={tabStyle(activeTab === 'reports')} onClick={() => setActiveTab('reports')}>
-          Exam Reports
-        </button>
-      </div>
+      <ul className="nav nav-tabs result-manager-tabs" role="tablist">
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'allResults' ? 'active' : ''}`}
+            onClick={() => setActiveTab('allResults')}
+            type="button"
+          >
+            <i className="bi bi-list-check me-2"></i>All Results
+          </button>
+        </li>
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'statistics' ? 'active' : ''}`}
+            onClick={() => setActiveTab('statistics')}
+            type="button"
+          >
+            <i className="bi bi-graph-up me-2"></i>Statistics
+          </button>
+        </li>
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'reports' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+            type="button"
+          >
+            <i className="bi bi-file-earmark-text me-2"></i>Exam Reports
+          </button>
+        </li>
+      </ul>
 
       {/* All Results Tab */}
       {activeTab === 'allResults' && (
         <div>
-          <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div>
-              <label style={{ marginRight: '0.5rem', fontWeight: 'bold' }}>Filter by Exam:</label>
+          <div className="filter-section">
+            <div className="filter-group">
+              <label htmlFor="filter-exam">
+                <i className="bi bi-funnel me-2"></i>Filter by Exam:
+              </label>
               <select
+                id="filter-exam"
+                className="form-select"
                 value={selectedExam}
                 onChange={(e) => {
                   setSelectedExam(e.target.value);
                   setSelectedStudent('');
                 }}
-                style={{ padding: '0.5rem', fontSize: '1rem', minWidth: 200 }}
+                style={{ minWidth: '200px' }}
               >
                 <option value="">All Exams</option>
                 {exams.map((exam) => (
@@ -212,15 +232,19 @@ const ResultManagerDashboard = () => {
                 ))}
               </select>
             </div>
-            <div>
-              <label style={{ marginRight: '0.5rem', fontWeight: 'bold' }}>Filter by Student:</label>
+            <div className="filter-group">
+              <label htmlFor="filter-student">
+                <i className="bi bi-person me-2"></i>Filter by Student:
+              </label>
               <select
+                id="filter-student"
+                className="form-select"
                 value={selectedStudent}
                 onChange={(e) => {
                   setSelectedStudent(e.target.value);
                   setSelectedExam('');
                 }}
-                style={{ padding: '0.5rem', fontSize: '1rem', minWidth: 200 }}
+                style={{ minWidth: '200px' }}
               >
                 <option value="">All Students</option>
                 {students.map((student) => (
@@ -232,228 +256,159 @@ const ResultManagerDashboard = () => {
             </div>
             {selectedAttempt && (
               <button
+                className="btn btn-secondary"
                 onClick={() => {
                   setSelectedAttempt(null);
                   setAttemptDetails(null);
                 }}
-                style={{ padding: '0.5rem 1rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
               >
-                Close Details
+                <i className="bi bi-x-circle me-2"></i>Close Details
               </button>
             )}
           </div>
 
           {selectedAttempt && attemptDetails ? (
-            <div style={{ border: '2px solid #17a2b8', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem' }}>
-              <h3>Detailed Attempt View</h3>
-              {detailsLoading ? (
-                <p>Loading details...</p>
-              ) : (
-                <div>
-                  <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9f9f9', borderRadius: '4px' }}>
-                    <p>
-                      <strong>Exam:</strong> {attemptDetails.attempt.exam_id?.exam_name}
-                    </p>
-                    <p>
-                      <strong>Student:</strong> {attemptDetails.attempt.student_id?.full_name} ({attemptDetails.attempt.student_id?.email})
-                    </p>
-                    <p>
-                      <strong>Score:</strong> {attemptDetails.attempt.total_score} / {attemptDetails.answers.length}
-                    </p>
-                    <p>
-                      <strong>Status:</strong>{' '}
-                      <span style={{ color: attemptDetails.attempt.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
-                        {attemptDetails.attempt.completed ? 'Completed' : 'In Progress'}
-                      </span>
-                    </p>
-                    <p>
-                      <strong>Started:</strong> {new Date(attemptDetails.attempt.start_time).toLocaleString()}
-                    </p>
-                    {attemptDetails.attempt.end_time && (
-                      <p>
-                        <strong>Submitted:</strong> {new Date(attemptDetails.attempt.end_time).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-
-                  <h4>Answers:</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {attemptDetails.answers.map((answer, idx) => (
-                      <div
-                        key={answer._id}
-                        style={{
-                          border: '1px solid #ddd',
-                          padding: '1rem',
-                          borderRadius: '4px',
-                          background: answer.is_correct ? '#d4edda' : '#f8d7da',
-                        }}
-                      >
-                        <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                          Question {idx + 1}: {answer.question_id?.question_text}
-                        </p>
-                        <div style={{ marginLeft: '1rem', fontSize: '0.9rem' }}>
-                          <p>1. {answer.question_id?.option1}</p>
-                          <p>2. {answer.question_id?.option2}</p>
-                          <p>3. {answer.question_id?.option3}</p>
-                          <p>4. {answer.question_id?.option4}</p>
-                        </div>
-                        <p style={{ marginTop: '0.5rem' }}>
-                          <strong>Student Selected:</strong> Option {answer.selected_option}
-                          {answer.is_correct ? (
-                            <span style={{ color: 'green', marginLeft: '0.5rem' }}>✓ Correct</span>
-                          ) : (
-                            <span style={{ color: 'red', marginLeft: '0.5rem' }}>
-                              ✗ Incorrect (Correct: Option {answer.question_id?.correct_option})
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <h3>All Results ({results.length})</h3>
-              {loading ? (
-                <p>Loading results...</p>
-              ) : results.length === 0 ? (
-                <p>No exam attempts found.</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                    <thead style={{ background: '#f5f5f5' }}>
-                      <tr>
-                        <th>Exam</th>
-                        <th>Student</th>
-                        <th>Email</th>
-                        <th>Score</th>
-                        <th>Status</th>
-                        <th>Started</th>
-                        <th>Submitted</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((r) => (
-                        <tr key={r._id}>
-                          <td>{r.exam_id?.exam_name || 'N/A'}</td>
-                          <td>{r.student_id?.full_name || r.student_id?.username || 'N/A'}</td>
-                          <td>{r.student_id?.email || 'N/A'}</td>
-                          <td>
-                            <strong style={{ color: r.completed ? (r.total_score >= 50 ? 'green' : 'red') : '#666' }}>
-                              {r.completed ? r.total_score : '-'}
-                            </strong>
-                          </td>
-                          <td>
-                            <span style={{ color: r.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
-                              {r.completed ? 'Completed' : 'In Progress'}
-                            </span>
-                          </td>
-                          <td>{new Date(r.start_time).toLocaleString()}</td>
-                          <td>{r.end_time ? new Date(r.end_time).toLocaleString() : '-'}</td>
-                          <td>
-                            <button
-                              onClick={() => setSelectedAttempt(r._id)}
-                              style={{ padding: '0.25rem 0.75rem', cursor: 'pointer', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.85rem' }}
-                            >
-                              View Details
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Statistics Tab */}
-      {activeTab === 'statistics' && (
-        <div>
-          <h3>Result Statistics</h3>
-          {statsLoading ? (
-            <p>Loading statistics...</p>
-          ) : stats ? (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ border: '1px solid #ddd', padding: '1.5rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#666' }}>Total Attempts</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#17a2b8' }}>{stats.overview.totalAttempts}</div>
-                </div>
-                <div style={{ border: '1px solid #ddd', padding: '1.5rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#666' }}>Completed</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#28a745' }}>{stats.overview.completedAttempts}</div>
-                </div>
-                <div style={{ border: '1px solid #ddd', padding: '1.5rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#666' }}>Pending</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffc107' }}>{stats.overview.pendingAttempts}</div>
-                </div>
-                <div style={{ border: '1px solid #ddd', padding: '1.5rem', borderRadius: '8px', background: '#f9f9f9' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#666' }}>Average Score</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#6f42c1' }}>{stats.overview.averageScore}</div>
-                </div>
+            <div className="card attempt-details-card">
+              <div className="card-header">
+                <h3 className="mb-0">
+                  <i className="bi bi-eye me-2"></i>Detailed Attempt View
+                </h3>
               </div>
-
-              <div style={{ marginBottom: '2rem' }}>
-                <h4>Statistics by Exam</h4>
-                {stats.examStats.length === 0 ? (
-                  <p>No exam statistics available.</p>
+              <div className="card-body">
+                {detailsLoading ? (
+                  <div className="loading-container">
+                    <div className="spinner-border text-info" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                      <thead style={{ background: '#f5f5f5' }}>
-                        <tr>
-                          <th>Exam</th>
-                          <th>Total Attempts</th>
-                          <th>Average Score</th>
-                          <th>Highest Score</th>
-                          <th>Lowest Score</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stats.examStats.map((stat, idx) => (
-                          <tr key={idx}>
-                            <td>{stat.examName || 'Unknown'}</td>
-                            <td>{stat.totalAttempts}</td>
-                            <td>{stat.avgScore}</td>
-                            <td>{stat.maxScore}</td>
-                            <td>{stat.minScore}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div>
+                    <div className="attempt-details-header">
+                      <div className="row">
+                        <div className="col-md-6 mb-2">
+                          <strong><i className="bi bi-file-earmark-text me-2"></i>Exam:</strong> {attemptDetails.attempt.exam_id?.exam_name}
+                        </div>
+                        <div className="col-md-6 mb-2">
+                          <strong><i className="bi bi-person me-2"></i>Student:</strong> {attemptDetails.attempt.student_id?.full_name} ({attemptDetails.attempt.student_id?.email})
+                        </div>
+                        <div className="col-md-6 mb-2">
+                          <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {attemptDetails.attempt.total_score} / {attemptDetails.answers.length}
+                        </div>
+                        <div className="col-md-6 mb-2">
+                          <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
+                          <span className={`status-badge ${attemptDetails.attempt.completed ? 'status-completed' : 'status-pending'}`}>
+                            <i className={`bi ${attemptDetails.attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                            {attemptDetails.attempt.completed ? 'Completed' : 'In Progress'}
+                          </span>
+                        </div>
+                        <div className="col-md-6 mb-2">
+                          <strong><i className="bi bi-play-circle me-2"></i>Started:</strong> {new Date(attemptDetails.attempt.start_time).toLocaleString('en-GB')}
+                        </div>
+                        {attemptDetails.attempt.end_time && (
+                          <div className="col-md-6 mb-2">
+                            <strong><i className="bi bi-check-circle me-2"></i>Submitted:</strong> {new Date(attemptDetails.attempt.end_time).toLocaleString('en-GB')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <h4 className="mt-4 mb-3">
+                      <i className="bi bi-list-ul me-2"></i>Answers:
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {attemptDetails.answers.map((answer, idx) => (
+                        <div
+                          key={answer._id}
+                          className={`answer-card ${answer.is_correct ? 'correct' : 'incorrect'}`}
+                        >
+                          <p className="fw-bold mb-2">
+                            Question {idx + 1}: {answer.question_id?.question_text}
+                          </p>
+                          <div className="answer-options">
+                            <p>1. {answer.question_id?.option1}</p>
+                            <p>2. {answer.question_id?.option2}</p>
+                            <p>3. {answer.question_id?.option3}</p>
+                            <p>4. {answer.question_id?.option4}</p>
+                          </div>
+                          <p className="answer-result mt-2">
+                            <strong>Student Selected:</strong> Option {answer.selected_option}
+                            {answer.is_correct ? (
+                              <span className="correct ms-2">
+                                <i className="bi bi-check-circle-fill me-1"></i>Correct
+                              </span>
+                            ) : (
+                              <span className="incorrect ms-2">
+                                <i className="bi bi-x-circle-fill me-1"></i>Incorrect (Correct: Option {answer.question_id?.correct_option})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-
-              <div>
-                <h4>Top 10 Students (by Average Score)</h4>
-                {stats.topStudents.length === 0 ? (
-                  <p>No student statistics available.</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="mb-0">
+                  <i className="bi bi-list-check me-2"></i>All Results ({results.length})
+                </h3>
+              </div>
+              <div className="card-body">
+                {loading ? (
+                  <div className="loading-container">
+                    <div className="spinner-border text-info" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : results.length === 0 ? (
+                  <div className="empty-container">
+                    <i className="bi bi-inbox"></i>
+                    <p>No exam attempts found.</p>
+                  </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                      <thead style={{ background: '#f5f5f5' }}>
+                  <div className="table-responsive">
+                    <table className="table table-hover">
+                      <thead>
                         <tr>
-                          <th>Rank</th>
+                          <th>Exam</th>
                           <th>Student</th>
-                          <th>Total Attempts</th>
-                          <th>Average Score</th>
+                          <th>Email</th>
+                          <th>Score</th>
+                          <th>Status</th>
+                          <th>Started</th>
+                          <th>Submitted</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {stats.topStudents.map((student, idx) => (
-                          <tr key={idx}>
-                            <td>#{idx + 1}</td>
-                            <td>{student.studentName}</td>
-                            <td>{student.totalAttempts}</td>
+                        {results.map((r) => (
+                          <tr key={r._id}>
+                            <td>{r.exam_id?.exam_name || 'N/A'}</td>
+                            <td>{r.student_id?.full_name || r.student_id?.username || 'N/A'}</td>
+                            <td>{r.student_id?.email || 'N/A'}</td>
                             <td>
-                              <strong style={{ color: '#28a745' }}>{student.avgScore}</strong>
+                              <strong className={`score-display ${r.completed ? (r.total_score >= 50 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                                {r.completed ? r.total_score : '-'}
+                              </strong>
+                            </td>
+                            <td>
+                              <span className={`status-badge ${r.completed ? 'status-completed' : 'status-pending'}`}>
+                                <i className={`bi ${r.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                {r.completed ? 'Completed' : 'In Progress'}
+                              </span>
+                            </td>
+                            <td>{new Date(r.start_time).toLocaleString('en-GB')}</td>
+                            <td>{r.end_time ? new Date(r.end_time).toLocaleString('en-GB') : '-'}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-info"
+                                onClick={() => setSelectedAttempt(r._id)}
+                              >
+                                <i className="bi bi-eye me-1"></i>View Details
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -463,112 +418,284 @@ const ResultManagerDashboard = () => {
                 )}
               </div>
             </div>
-          ) : (
-            <p>Failed to load statistics.</p>
           )}
+        </div>
+      )}
+
+      {/* Statistics Tab */}
+      {activeTab === 'statistics' && (
+        <div>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="mb-0">
+                <i className="bi bi-graph-up-arrow me-2"></i>Result Statistics
+              </h3>
+            </div>
+            <div className="card-body">
+              {statsLoading ? (
+                <div className="loading-container">
+                  <div className="spinner-border text-info" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : stats ? (
+                <div>
+                  <div className="stats-overview-grid">
+                    <div className="stat-overview-card">
+                      <div className="stat-overview-label">Total Attempts</div>
+                      <div className="stat-overview-value info">{stats.overview.totalAttempts}</div>
+                    </div>
+                    <div className="stat-overview-card">
+                      <div className="stat-overview-label">Completed</div>
+                      <div className="stat-overview-value success">{stats.overview.completedAttempts}</div>
+                    </div>
+                    <div className="stat-overview-card">
+                      <div className="stat-overview-label">Pending</div>
+                      <div className="stat-overview-value warning">{stats.overview.pendingAttempts}</div>
+                    </div>
+                    <div className="stat-overview-card">
+                      <div className="stat-overview-label">Average Score</div>
+                      <div className="stat-overview-value purple">{stats.overview.averageScore}</div>
+                    </div>
+                  </div>
+
+                  <div className="card mb-4">
+                    <div className="card-header">
+                      <h4 className="mb-0">
+                        <i className="bi bi-list-ul me-2"></i>Statistics by Exam
+                      </h4>
+                    </div>
+                    <div className="card-body">
+                      {stats.examStats.length === 0 ? (
+                        <div className="alert alert-info">
+                          <i className="bi bi-info-circle me-2"></i>
+                          No exam statistics available.
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-hover">
+                            <thead>
+                              <tr>
+                                <th>Exam</th>
+                                <th>Total Attempts</th>
+                                <th>Average Score</th>
+                                <th>Highest Score</th>
+                                <th>Lowest Score</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stats.examStats.map((stat, idx) => (
+                                <tr key={idx}>
+                                  <td><strong>{stat.examName || 'Unknown'}</strong></td>
+                                  <td>{stat.totalAttempts}</td>
+                                  <td><strong className="text-info">{stat.avgScore}</strong></td>
+                                  <td><strong className="text-success">{stat.maxScore}</strong></td>
+                                  <td><strong className="text-danger">{stat.minScore}</strong></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="card">
+                    <div className="card-header">
+                      <h4 className="mb-0">
+                        <i className="bi bi-trophy me-2"></i>Top 10 Students (by Average Score)
+                      </h4>
+                    </div>
+                    <div className="card-body">
+                      {stats.topStudents.length === 0 ? (
+                        <div className="alert alert-info">
+                          <i className="bi bi-info-circle me-2"></i>
+                          No student statistics available.
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-hover top-students-table">
+                            <thead>
+                              <tr>
+                                <th>Rank</th>
+                                <th>Student</th>
+                                <th>Total Attempts</th>
+                                <th>Average Score</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stats.topStudents.map((student, idx) => (
+                                <tr key={idx}>
+                                  <td>
+                                    <span className="rank-badge">#{idx + 1}</span>
+                                  </td>
+                                  <td><strong>{student.studentName}</strong></td>
+                                  <td>{student.totalAttempts}</td>
+                                  <td>
+                                    <strong className="text-success" style={{ fontSize: '1.1rem' }}>{student.avgScore}</strong>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-container">
+                  <i className="bi bi-exclamation-triangle"></i>
+                  <p>Failed to load statistics.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <div>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ marginRight: '0.5rem', fontWeight: 'bold' }}>Select Exam for Report:</label>
-            <select
-              value={selectedExamForReport}
-              onChange={(e) => setSelectedExamForReport(e.target.value)}
-              style={{ padding: '0.5rem', fontSize: '1rem', minWidth: 300 }}
-            >
-              <option value="">-- Select an Exam --</option>
-              {exams.map((exam) => (
-                <option key={exam._id} value={exam._id}>
-                  {exam.exam_name}
-                </option>
-              ))}
-            </select>
+          <div className="card mb-3">
+            <div className="card-body">
+              <div className="filter-group">
+                <label htmlFor="report-exam">
+                  <i className="bi bi-file-earmark-text me-2"></i>Select Exam for Report:
+                </label>
+                <select
+                  id="report-exam"
+                  className="form-select"
+                  value={selectedExamForReport}
+                  onChange={(e) => setSelectedExamForReport(e.target.value)}
+                  style={{ maxWidth: '400px' }}
+                >
+                  <option value="">-- Select an Exam --</option>
+                  {exams.map((exam) => (
+                    <option key={exam._id} value={exam._id}>
+                      {exam.exam_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           {selectedExamForReport && (
             <>
               {reportLoading ? (
-                <p>Loading report...</p>
+                <div className="loading-container">
+                  <div className="spinner-border text-info" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
               ) : examReport ? (
                 <div>
-                  <div style={{ border: '2px solid #17a2b8', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', background: '#f9f9f9' }}>
-                    <h3>Exam Report: {examReport.exam.exam_name}</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                      <div>
-                        <strong>Total Questions:</strong> {examReport.questions.total}
-                      </div>
-                      <div>
-                        <strong>Total Students:</strong> {examReport.statistics.totalStudents}
-                      </div>
-                      <div>
-                        <strong>Completed:</strong> {examReport.statistics.completed}
-                      </div>
-                      <div>
-                        <strong>Ongoing:</strong> {examReport.statistics.ongoing}
-                      </div>
-                      <div>
-                        <strong>Average Score:</strong> {examReport.statistics.averageScore}
-                      </div>
-                      <div>
-                        <strong>Highest Score:</strong> {examReport.statistics.highestScore}
-                      </div>
-                      <div>
-                        <strong>Lowest Score:</strong> {examReport.statistics.lowestScore}
-                      </div>
-                      <div>
-                        <strong>Passed:</strong> {examReport.statistics.passCount}
-                      </div>
-                      <div>
-                        <strong>Failed:</strong> {examReport.statistics.failCount}
+                  <div className="card exam-report-card">
+                    <div className="card-header">
+                      <h3 className="mb-0">
+                        <i className="bi bi-file-earmark-text me-2"></i>Exam Report: {examReport.exam.exam_name}
+                      </h3>
+                    </div>
+                    <div className="card-body">
+                      <div className="exam-report-stats">
+                        <div className="exam-report-stat-item">
+                          <strong>Total Questions:</strong>
+                          <span>{examReport.questions.total}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Total Students:</strong>
+                          <span>{examReport.statistics.totalStudents}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Completed:</strong>
+                          <span className="text-success">{examReport.statistics.completed}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Ongoing:</strong>
+                          <span className="text-warning">{examReport.statistics.ongoing}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Average Score:</strong>
+                          <span>{examReport.statistics.averageScore}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Highest Score:</strong>
+                          <span className="text-success">{examReport.statistics.highestScore}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Lowest Score:</strong>
+                          <span className="text-danger">{examReport.statistics.lowestScore}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Passed:</strong>
+                          <span className="text-success">{examReport.statistics.passCount}</span>
+                        </div>
+                        <div className="exam-report-stat-item">
+                          <strong>Failed:</strong>
+                          <span className="text-danger">{examReport.statistics.failCount}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <h4>All Attempts</h4>
-                  {examReport.attempts.all.length === 0 ? (
-                    <p>No attempts for this exam.</p>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
-                        <thead style={{ background: '#f5f5f5' }}>
-                          <tr>
-                            <th>Student</th>
-                            <th>Email</th>
-                            <th>Score</th>
-                            <th>Status</th>
-                            <th>Started</th>
-                            <th>Submitted</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {examReport.attempts.all.map((attempt) => (
-                            <tr key={attempt._id}>
-                              <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
-                              <td>{attempt.student_id?.email}</td>
-                              <td>
-                                <strong style={{ color: attempt.completed ? (attempt.total_score >= examReport.questions.total / 2 ? 'green' : 'red') : '#666' }}>
-                                  {attempt.completed ? `${attempt.total_score} / ${examReport.questions.total}` : '-'}
-                                </strong>
-                              </td>
-                              <td>
-                                <span style={{ color: attempt.completed ? 'green' : 'orange', fontWeight: 'bold' }}>
-                                  {attempt.completed ? 'Completed' : 'In Progress'}
-                                </span>
-                              </td>
-                              <td>{new Date(attempt.start_time).toLocaleString()}</td>
-                              <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString() : '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <div className="card">
+                    <div className="card-header">
+                      <h4 className="mb-0">
+                        <i className="bi bi-list-check me-2"></i>All Attempts
+                      </h4>
                     </div>
-                  )}
+                    <div className="card-body">
+                      {examReport.attempts.all.length === 0 ? (
+                        <div className="empty-container">
+                          <i className="bi bi-inbox"></i>
+                          <p>No attempts for this exam.</p>
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-hover">
+                            <thead>
+                              <tr>
+                                <th>Student</th>
+                                <th>Email</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Submitted</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {examReport.attempts.all.map((attempt) => (
+                                <tr key={attempt._id}>
+                                  <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
+                                  <td>{attempt.student_id?.email}</td>
+                                  <td>
+                                    <strong className={`score-display ${attempt.completed ? (attempt.total_score >= examReport.questions.total / 2 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                                      {attempt.completed ? `${attempt.total_score} / ${examReport.questions.total}` : '-'}
+                                    </strong>
+                                  </td>
+                                  <td>
+                                    <span className={`status-badge ${attempt.completed ? 'status-completed' : 'status-pending'}`}>
+                                      <i className={`bi ${attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                      {attempt.completed ? 'Completed' : 'In Progress'}
+                                    </span>
+                                  </td>
+                                  <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
+                                  <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <p>Failed to load report.</p>
+                <div className="empty-container">
+                  <i className="bi bi-exclamation-triangle"></i>
+                  <p>Failed to load report.</p>
+                </div>
               )}
             </>
           )}

@@ -4,14 +4,75 @@ const Question = require('../models/Question');
 const StudentAnswer = require('../models/StudentAnswer');
 const User = require('../models/User');
 
+// Utility function to clean up orphaned StudentAnswer records (answers with deleted questions)
+const cleanupOrphanedAnswers = async () => {
+  try {
+    // Get all valid question IDs
+    const validQuestionIds = await Question.find().distinct('_id');
+    
+    // Find all StudentAnswer records with invalid question_id
+    const orphanedAnswers = await StudentAnswer.find({
+      question_id: { $nin: validQuestionIds }
+    });
+    
+    if (orphanedAnswers.length === 0) {
+      return { deletedCount: 0, affectedAttempts: [] };
+    }
+    
+    // Get unique attempt IDs that will be affected
+    const attemptIds = [...new Set(orphanedAnswers.map(answer => String(answer.attempt_id)))];
+    
+    // Delete orphaned answers
+    const deleteResult = await StudentAnswer.deleteMany({
+      question_id: { $nin: validQuestionIds }
+    });
+    
+    // Recalculate scores for affected completed attempts
+    const affectedAttempts = [];
+    for (const attemptId of attemptIds) {
+      const attempt = await ExamAttempt.findById(attemptId);
+      if (attempt && attempt.completed) {
+        // Recalculate score based on remaining valid answers
+        const remainingAnswers = await StudentAnswer.find({ 
+          attempt_id: attemptId,
+          is_correct: true 
+        });
+        const newScore = remainingAnswers.length;
+        if (attempt.total_score !== newScore) {
+          attempt.total_score = newScore;
+          await attempt.save();
+          affectedAttempts.push(attemptId);
+        }
+      }
+    }
+    
+    return {
+      deletedCount: deleteResult.deletedCount,
+      affectedAttempts: affectedAttempts.length
+    };
+  } catch (error) {
+    console.error('Error cleaning up orphaned answers:', error);
+    return { deletedCount: 0, affectedAttempts: 0, error: error.message };
+  }
+};
+
 // GET /api/results (Result Manager)
 const getAllResults = async (req, res) => {
   try {
+    // Clean up orphaned answers (runs automatically to handle existing orphaned records)
+    // This is safe to run on every request as it only processes orphaned records
+    await cleanupOrphanedAnswers();
+    
     const attempts = await ExamAttempt.find()
       .populate('exam_id', 'exam_name')
       .populate('student_id', 'username full_name email');
-    return res.json(attempts);
+    
+    // Filter out attempts where exam_id is null (exam was deleted)
+    const validAttempts = attempts.filter(attempt => attempt.exam_id !== null);
+    
+    return res.json(validAttempts);
   } catch (error) {
+    console.error('Error fetching all results:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };
@@ -36,9 +97,12 @@ const getMyResults = async (req, res) => {
       .populate('exam_id', 'exam_name start_time end_time duration')
       .sort({ createdAt: -1 });
     
+    // Filter out attempts where exam_id is null (exam was deleted)
+    const validAttempts = attempts.filter(attempt => attempt.exam_id !== null);
+    
     // Get question counts for each exam
     const Question = require('../models/Question');
-    const examIds = [...new Set(attempts.map(a => a.exam_id?._id || a.exam_id).filter(Boolean))];
+    const examIds = [...new Set(validAttempts.map(a => a.exam_id?._id || a.exam_id).filter(Boolean))];
     const questionCounts = await Question.aggregate([
       { $match: { exam_id: { $in: examIds } } },
       { $group: { _id: '$exam_id', count: { $sum: 1 } } },
@@ -49,7 +113,7 @@ const getMyResults = async (req, res) => {
     });
 
     // Add question count to each attempt
-    const attemptsWithCounts = attempts.map((attempt) => {
+    const attemptsWithCounts = validAttempts.map((attempt) => {
       const examId = attempt.exam_id?._id || attempt.exam_id;
       const questionCount = questionCountMap.get(String(examId)) || 0;
       return {
@@ -88,9 +152,12 @@ const getMyAttemptDetails = async (req, res) => {
     const answers = await StudentAnswer.find({ attempt_id: attemptId })
       .populate('question_id', 'question_text option1 option2 option3 option4 correct_option');
 
+    // Filter out answers where question_id is null (question was deleted)
+    const validAnswers = answers.filter(answer => answer.question_id !== null);
+
     return res.json({
       attempt,
-      answers,
+      answers: validAnswers,
     });
   } catch (error) {
     console.error('Error fetching student attempt details:', error);
@@ -106,7 +173,11 @@ const getResultsByStudent = async (req, res) => {
       .populate('exam_id', 'exam_name start_time end_time duration')
       .populate('student_id', 'username full_name email')
       .sort({ createdAt: -1 });
-    return res.json(attempts);
+    
+    // Filter out attempts where exam_id is null (exam was deleted)
+    const validAttempts = attempts.filter(attempt => attempt.exam_id !== null);
+    
+    return res.json(validAttempts);
   } catch (error) {
     console.error('Error fetching student results:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -128,9 +199,12 @@ const getAttemptDetails = async (req, res) => {
     const answers = await StudentAnswer.find({ attempt_id: attemptId })
       .populate('question_id', 'question_text option1 option2 option3 option4 correct_option');
 
+    // Filter out answers where question_id is null (question was deleted)
+    const validAnswers = answers.filter(answer => answer.question_id !== null);
+
     return res.json({
       attempt,
-      answers,
+      answers: validAnswers,
     });
   } catch (error) {
     console.error('Error fetching attempt details:', error);
@@ -141,6 +215,9 @@ const getAttemptDetails = async (req, res) => {
 // GET /api/results/stats (Result Manager) - Get result statistics
 const getResultStats = async (req, res) => {
   try {
+    // Get all valid exam IDs (exams that still exist)
+    const validExamIds = await Exam.find().distinct('_id');
+    
     const [
       totalAttempts,
       completedAttempts,
@@ -149,15 +226,15 @@ const getResultStats = async (req, res) => {
       examStats,
       studentStats,
     ] = await Promise.all([
-      ExamAttempt.countDocuments(),
-      ExamAttempt.countDocuments({ completed: true }),
-      ExamAttempt.countDocuments({ completed: false }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds } }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, completed: true }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, completed: false }),
       ExamAttempt.aggregate([
-        { $match: { completed: true } },
+        { $match: { exam_id: { $in: validExamIds }, completed: true } },
         { $group: { _id: null, avg: { $avg: '$total_score' } } },
       ]),
       ExamAttempt.aggregate([
-        { $match: { completed: true } },
+        { $match: { exam_id: { $in: validExamIds }, completed: true } },
         {
           $group: {
             _id: '$exam_id',
@@ -175,7 +252,7 @@ const getResultStats = async (req, res) => {
             as: 'exam',
           },
         },
-        { $unwind: { path: '$exam', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$exam', preserveNullAndEmptyArrays: false } },
         {
           $project: {
             examName: '$exam.exam_name',
@@ -188,7 +265,7 @@ const getResultStats = async (req, res) => {
         { $sort: { totalAttempts: -1 } },
       ]),
       ExamAttempt.aggregate([
-        { $match: { completed: true } },
+        { $match: { exam_id: { $in: validExamIds }, completed: true } },
         {
           $group: {
             _id: '$student_id',
