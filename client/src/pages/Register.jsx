@@ -16,16 +16,84 @@ const Register = () => {
     password: '',
     role: 'Student',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const validateUsername = (username) => {
+    // Only letters, underscore, and full stop - no spaces, no digits, no other characters
+    const usernameRegex = /^[a-zA-Z._]+$/;
+    if (!usernameRegex.test(username)) {
+      return 'Username can only contain letters, underscore (_), and full stop (.). No spaces, digits, or other characters allowed.';
+    }
+    return '';
+  };
+
+  const validateFullName = (fullName) => {
+    // Name only with spaces if needed - letters and spaces
+    const fullNameRegex = /^[a-zA-Z\s]+$/;
+    if (!fullNameRegex.test(fullName)) {
+      return 'Full name can only contain letters and spaces.';
+    }
+    if (fullName.trim().length < 2) {
+      return 'Full name must be at least 2 characters long.';
+    }
+    return '';
+  };
+
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
+    
+    // Real-time validation
+    if (name === 'username') {
+      const usernameError = validateUsername(value);
+      if (usernameError) {
+        setErrors({ ...errors, username: usernameError });
+      } else {
+        const newErrors = { ...errors };
+        delete newErrors.username;
+        setErrors(newErrors);
+      }
+    } else if (name === 'full_name') {
+      const fullNameError = validateFullName(value);
+      if (fullNameError) {
+        setErrors({ ...errors, full_name: fullNameError });
+      } else {
+        const newErrors = { ...errors };
+        delete newErrors.full_name;
+        setErrors(newErrors);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate all fields
+    const validationErrors = {};
+    const usernameError = validateUsername(form.username);
+    if (usernameError) {
+      validationErrors.username = usernameError;
+    }
+    
+    const fullNameError = validateFullName(form.full_name);
+    if (fullNameError) {
+      validationErrors.full_name = fullNameError;
+    }
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    
     setLoading(true);
     try {
       const userData = await register(form);
@@ -36,23 +104,6 @@ const Register = () => {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case 'System Admin':
-        return 'bi-shield-check';
-      case 'Exam Manager':
-        return 'bi-file-earmark-text';
-      case 'Question Manager':
-        return 'bi-question-circle';
-      case 'Result Manager':
-        return 'bi-clipboard-data';
-      case 'Student':
-        return 'bi-person';
-      default:
-        return 'bi-person';
     }
   };
 
@@ -75,69 +126,69 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="mb-3">
             <label htmlFor="username" className="form-label">
-              <i className="bi bi-person me-2"></i>Username
+              Username
             </label>
-            <div className="input-group">
-              <i className="bi bi-person"></i>
-              <input
-                type="text"
-                className="form-control"
-                id="username"
-                name="username"
-                placeholder="Choose a username"
-                value={form.username}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            <input
+              type="text"
+              className={`form-control ${errors.username ? 'is-invalid' : ''}`}
+              id="username"
+              name="username"
+              placeholder="Choose a username (letters, _, . only)"
+              value={form.username}
+              onChange={handleChange}
+              required
+            />
+            {errors.username && (
+              <div className="invalid-feedback d-block">
+                {errors.username}
+              </div>
+            )}
           </div>
 
           <div className="mb-3">
             <label htmlFor="full_name" className="form-label">
-              <i className="bi bi-person-badge me-2"></i>Full Name
+              Full Name
             </label>
-            <div className="input-group">
-              <i className="bi bi-person-badge"></i>
-              <input
-                type="text"
-                className="form-control"
-                id="full_name"
-                name="full_name"
-                placeholder="Enter your full name"
-                value={form.full_name}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            <input
+              type="text"
+              className={`form-control ${errors.full_name ? 'is-invalid' : ''}`}
+              id="full_name"
+              name="full_name"
+              placeholder="Enter your full name"
+              value={form.full_name}
+              onChange={handleChange}
+              required
+            />
+            {errors.full_name && (
+              <div className="invalid-feedback d-block">
+                {errors.full_name}
+              </div>
+            )}
           </div>
 
           <div className="mb-3">
             <label htmlFor="email" className="form-label">
-              <i className="bi bi-envelope me-2"></i>Email Address
+              Email Address
             </label>
-            <div className="input-group">
-              <i className="bi bi-envelope"></i>
-              <input
-                type="email"
-                className="form-control"
-                id="email"
-                name="email"
-                placeholder="Enter your email"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            <input
+              type="email"
+              className="form-control"
+              id="email"
+              name="email"
+              placeholder="Enter your email"
+              value={form.email}
+              onChange={handleChange}
+              required
+            />
           </div>
 
           <div className="mb-3">
             <label htmlFor="password" className="form-label">
-              <i className="bi bi-lock me-2"></i>Password
+              Password
             </label>
             <div className="input-group">
-              <i className="bi bi-lock"></i>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-control"
                 id="password"
                 name="password"
@@ -146,29 +197,34 @@ const Register = () => {
                 onChange={handleChange}
                 required
               />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+              </button>
             </div>
           </div>
 
           <div className="mb-3">
             <label htmlFor="role" className="form-label">
-              <i className="bi bi-person-badge me-2"></i>Role
+              Role
             </label>
-            <div className="input-group">
-              <i className={`bi ${getRoleIcon(form.role)}`}></i>
-              <select
-                className="form-select"
-                id="role"
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-              >
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              className="form-select"
+              id="role"
+              name="role"
+              value={form.role}
+              onChange={handleChange}
+            >
+              {roles.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button type="submit" className="btn auth-submit-btn" disabled={loading}>

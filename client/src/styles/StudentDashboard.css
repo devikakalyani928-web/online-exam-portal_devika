@@ -27,27 +27,7 @@
   margin-bottom: 2rem;
 }
 
-.student-tabs .nav-link {
-  color: var(--secondary-color);
-  font-weight: 500;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-bottom: 3px solid transparent;
-  transition: all 0.15s ease-in-out;
-  margin-right: 0.5rem;
-}
-
-.student-tabs .nav-link:hover {
-  color: var(--success-color);
-  border-bottom-color: rgba(40, 167, 69, 0.3);
-}
-
-.student-tabs .nav-link.active {
-  color: white;
-  background-color: transparent;
-  border-bottom-color: var(--success-color);
-  font-weight: 600;
-}
+/* Tab Navigation - Styles are now in global.css */
 
 /* Exam Cards */
 .exam-cards-grid {
@@ -408,10 +388,7 @@
     padding: 1rem 0.5rem;
   }
   
-  .student-tabs .nav-link {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-  }
+  /* Tab responsive styles are now in global.css */
   
   .exam-cards-grid {
     grid-template-columns: 1fr;

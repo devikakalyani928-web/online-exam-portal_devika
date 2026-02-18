@@ -82,17 +82,15 @@
   position: relative;
 }
 
-.auth-form .input-group i {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d;
-  z-index: 10;
+.auth-form .input-group .btn {
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
-.auth-form .input-group .form-control {
-  padding-left: 2.5rem;
+.auth-form .input-group .form-control:focus + .btn,
+.auth-form .input-group .form-control:focus ~ .btn {
+  border-color: #667eea;
 }
 
 .auth-submit-btn {

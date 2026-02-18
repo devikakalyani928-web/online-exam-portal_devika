@@ -43,9 +43,6 @@ const QuestionManagerDashboard = () => {
       if (!res.ok) throw new Error('Failed to load exams');
       const data = await res.json();
       setExams(data);
-      if (data.length > 0 && !selectedExamId) {
-        setSelectedExamId(data[0]._id);
-      }
     } catch (err) {
       setError(err.message);
     }
@@ -367,9 +364,17 @@ const QuestionManagerDashboard = () => {
                 <select
                   className="form-select"
                   value={selectedExamId}
-                  onChange={(e) => setSelectedExamId(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedExamId(e.target.value);
+                    if (!e.target.value) {
+                      setQuestions([]);
+                      setEditMode(false);
+                      setEditingQuestion(null);
+                    }
+                  }}
                   style={{ maxWidth: '400px' }}
                 >
+                  <option value="">-- Select an Exam --</option>
                   {exams.map((exam) => (
                     <option key={exam._id} value={exam._id}>
                       {exam.exam_name}
@@ -380,14 +385,12 @@ const QuestionManagerDashboard = () => {
             </div>
           </div>
 
-          {selectedExamId && (
-            <>
-              {!editMode ? (
-                <div className="card question-form-card">
-                  <h3>
-                    <i className="bi bi-plus-circle me-2"></i>Add Question
-                  </h3>
-                  <form onSubmit={handleCreate}>
+          {!editMode ? (
+            <div className="card question-form-card">
+              <h3>
+                <i className="bi bi-plus-circle me-2"></i>Add Question
+              </h3>
+              <form onSubmit={handleCreate}>
                     <div className="mb-3">
                       <label htmlFor="question_text" className="form-label">Question Text</label>
                       <textarea
@@ -469,7 +472,7 @@ const QuestionManagerDashboard = () => {
                         <option value={4}>Option 4</option>
                       </select>
                     </div>
-                    <button type="submit" className="btn btn-warning">
+                    <button type="submit" className="btn btn-primary">
                       <i className="bi bi-plus-circle me-2"></i>Add Question
                     </button>
                   </form>
@@ -579,75 +582,75 @@ const QuestionManagerDashboard = () => {
                 </div>
               )}
 
-              <div className="card question-table-container">
-                <div className="card-header">
-                  <h3 className="mb-0">
-                    <i className="bi bi-list-ul me-2"></i>Questions for Selected Exam ({questions.length})
-                  </h3>
-                </div>
-                <div className="card-body">
-                  {loading ? (
-                    <div className="loading-container">
-                      <div className="spinner-border text-warning" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                    </div>
-                  ) : questions.length === 0 ? (
-                    <div className="empty-container">
-                      <i className="bi bi-inbox"></i>
-                      <p>No questions yet. Add your first question above.</p>
-                    </div>
-                  ) : (
-                    <div className="table-responsive">
-                      <table className="table table-hover">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '40%' }}>Question</th>
-                            <th style={{ width: '35%' }}>Options</th>
-                            <th style={{ width: '10%' }}>Correct</th>
-                            <th style={{ width: '15%' }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {questions.map((q) => (
-                            <tr key={q._id} className={editingQuestion === q._id ? 'question-row-editing' : ''}>
-                              <td>{q.question_text}</td>
-                              <td>
-                                <div className="option-list">
-                                  <div className="option-item">1. {q.option1}</div>
-                                  <div className="option-item">2. {q.option2}</div>
-                                  <div className="option-item">3. {q.option3}</div>
-                                  <div className="option-item">4. {q.option4}</div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="correct-option-badge">{q.correct_option}</span>
-                              </td>
-                              <td>
-                                <div className="table-actions">
-                                  <button
-                                    className="btn btn-sm btn-primary"
-                                    onClick={() => handleEdit(q)}
-                                  >
-                                    <i className="bi bi-pencil me-1"></i>Edit
-                                  </button>
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() => handleDelete(q._id)}
-                                  >
-                                    <i className="bi bi-trash me-1"></i>Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+          {selectedExamId && (
+            <div className="card question-table-container">
+              <div className="card-header">
+                <h3 className="mb-0">
+                  <i className="bi bi-list-ul me-2"></i>Questions for Selected Exam ({questions.length})
+                </h3>
               </div>
-            </>
+              <div className="card-body">
+                {loading ? (
+                  <div className="loading-container">
+                      <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : questions.length === 0 ? (
+                  <div className="empty-container">
+                    <i className="bi bi-inbox"></i>
+                    <p>No questions yet. Add your first question above.</p>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-hover">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40%' }}>Question</th>
+                          <th style={{ width: '35%' }}>Options</th>
+                          <th style={{ width: '10%' }}>Correct</th>
+                          <th style={{ width: '15%' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {questions.map((q) => (
+                          <tr key={q._id} className={editingQuestion === q._id ? 'question-row-editing' : ''}>
+                            <td>{q.question_text}</td>
+                            <td>
+                              <div className="option-list">
+                                <div className="option-item">1. {q.option1}</div>
+                                <div className="option-item">2. {q.option2}</div>
+                                <div className="option-item">3. {q.option3}</div>
+                                <div className="option-item">4. {q.option4}</div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="correct-option-badge">{q.correct_option}</span>
+                            </td>
+                            <td>
+                              <div className="table-actions">
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => handleEdit(q)}
+                                >
+                                  <i className="bi bi-pencil me-1"></i>Edit
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => handleDelete(q._id)}
+                                >
+                                  <i className="bi bi-trash me-1"></i>Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -679,7 +682,7 @@ const QuestionManagerDashboard = () => {
 
           {loading ? (
             <div className="loading-container">
-              <div className="spinner-border text-warning" role="status">
+                      <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>
             </div>
@@ -785,7 +788,7 @@ const QuestionManagerDashboard = () => {
             <div className="card-body">
               {statsLoading ? (
                 <div className="loading-container">
-                  <div className="spinner-border text-warning" role="status">
+                      <div className="spinner-border text-primary" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </div>
                 </div>
@@ -818,7 +821,7 @@ const QuestionManagerDashboard = () => {
                             <tr key={idx}>
                               <td><strong>{item.examName || 'Unknown Exam'}</strong></td>
                               <td>
-                                <span className="badge bg-warning text-dark" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                                <span className="badge bg-primary" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                                   {item.count}
                                 </span>
                               </td>

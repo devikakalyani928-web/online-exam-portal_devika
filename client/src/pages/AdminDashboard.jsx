@@ -19,6 +19,8 @@ const AdminDashboard = () => {
     role: 'Student',
   });
   const [editingUserId, setEditingUserId] = useState(null);
+  const [userFormErrors, setUserFormErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
   
   // Exams state
   const [exams, setExams] = useState([]);
@@ -31,6 +33,13 @@ const AdminDashboard = () => {
   // Stats state
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  
+  // Feedback state
+  const [feedback, setFeedback] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [replying, setReplying] = useState(false);
   
   const [error, setError] = useState('');
 
@@ -79,7 +88,11 @@ const AdminDashboard = () => {
       });
       if (!res.ok) throw new Error('Failed to load results');
       const data = await res.json();
-      setResults(data);
+      // Filter out any attempts with null student_id or exam_id (safety check)
+      const validResults = data.filter(result => 
+        result.student_id !== null && result.exam_id !== null
+      );
+      setResults(validResults);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -106,6 +119,59 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch feedback
+  const fetchFeedback = async () => {
+    try {
+      setFeedbackLoading(true);
+      const res = await fetch(`${API_BASE}/api/feedback`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to load feedback');
+      const data = await res.json();
+      setFeedback(data);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  // Reply to feedback
+  const handleReply = async (feedbackId) => {
+    if (!replyMessage.trim()) {
+      setError('Please enter a reply message');
+      return;
+    }
+
+    setReplying(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/feedback/${feedbackId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reply: replyMessage }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to send reply');
+      }
+
+      setReplyMessage('');
+      setReplyingTo(null);
+      fetchFeedback();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setReplying(false);
+    }
+  };
+
   // Load data based on active tab
   useEffect(() => {
     if (!token) return;
@@ -118,12 +184,62 @@ const AdminDashboard = () => {
       fetchResults();
     } else if (activeTab === 'stats') {
       fetchStats();
+    } else if (activeTab === 'feedback') {
+      fetchFeedback();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, activeTab]);
 
+  const validateUsername = (username) => {
+    // Only letters, underscore, and full stop - no spaces, no digits, no other characters
+    const usernameRegex = /^[a-zA-Z._]+$/;
+    if (!usernameRegex.test(username)) {
+      return 'Username can only contain letters, underscore (_), and full stop (.). No spaces, digits, or other characters allowed.';
+    }
+    return '';
+  };
+
+  const validateFullName = (fullName) => {
+    // Name only with spaces if needed - letters and spaces
+    const fullNameRegex = /^[a-zA-Z\s]+$/;
+    if (!fullNameRegex.test(fullName)) {
+      return 'Full name can only contain letters and spaces.';
+    }
+    if (fullName.trim().length < 2) {
+      return 'Full name must be at least 2 characters long.';
+    }
+    return '';
+  };
+
   const handleUserFormChange = (e) => {
-    setUserForm({ ...userForm, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setUserForm({ ...userForm, [name]: value });
+    
+    // Clear error for this field when user starts typing
+    if (userFormErrors[name]) {
+      setUserFormErrors({ ...userFormErrors, [name]: '' });
+    }
+    
+    // Real-time validation
+    if (name === 'username') {
+      const usernameError = validateUsername(value);
+      if (usernameError) {
+        setUserFormErrors({ ...userFormErrors, username: usernameError });
+      } else {
+        const newErrors = { ...userFormErrors };
+        delete newErrors.username;
+        setUserFormErrors(newErrors);
+      }
+    } else if (name === 'full_name') {
+      const fullNameError = validateFullName(value);
+      if (fullNameError) {
+        setUserFormErrors({ ...userFormErrors, full_name: fullNameError });
+      } else {
+        const newErrors = { ...userFormErrors };
+        delete newErrors.full_name;
+        setUserFormErrors(newErrors);
+      }
+    }
   };
 
   const handleEditUser = (user) => {
@@ -135,6 +251,7 @@ const AdminDashboard = () => {
       password: '', // Don't pre-fill password
       role: user.role,
     });
+    setUserFormErrors({}); // Clear any validation errors
     // Scroll to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -148,11 +265,30 @@ const AdminDashboard = () => {
       password: '',
       role: 'Student',
     });
+    setUserFormErrors({}); // Clear any validation errors
   };
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate all fields
+    const validationErrors = {};
+    const usernameError = validateUsername(userForm.username);
+    if (usernameError) {
+      validationErrors.username = usernameError;
+    }
+    
+    const fullNameError = validateFullName(userForm.full_name);
+    if (fullNameError) {
+      validationErrors.full_name = fullNameError;
+    }
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setUserFormErrors(validationErrors);
+      return;
+    }
+    
     try {
       if (editingUserId) {
         // Update existing user
@@ -204,6 +340,7 @@ const AdminDashboard = () => {
         password: '',
         role: 'Student',
       });
+      setUserFormErrors({}); // Clear validation errors on success
       fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -277,6 +414,15 @@ const AdminDashboard = () => {
             <i className="bi bi-graph-up me-2"></i>System Statistics
           </button>
         </li>
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${activeTab === 'feedback' ? 'active' : ''}`}
+            onClick={() => setActiveTab('feedback')}
+            type="button"
+          >
+            <i className="bi bi-chat-left-text me-2"></i>Feedback
+          </button>
+        </li>
       </ul>
 
       {/* Users Tab */}
@@ -293,20 +439,25 @@ const AdminDashboard = () => {
                   <label htmlFor="username" className="form-label">Username</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${userFormErrors.username ? 'is-invalid' : ''}`}
                     id="username"
                     name="username"
-                    placeholder="Username"
+                    placeholder="Username (letters, _, . only)"
                     value={userForm.username}
                     onChange={handleUserFormChange}
                     required
                   />
+                  {userFormErrors.username && (
+                    <div className="invalid-feedback d-block">
+                      {userFormErrors.username}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <label htmlFor="full_name" className="form-label">Full Name</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${userFormErrors.full_name ? 'is-invalid' : ''}`}
                     id="full_name"
                     name="full_name"
                     placeholder="Full name"
@@ -314,6 +465,11 @@ const AdminDashboard = () => {
                     onChange={handleUserFormChange}
                     required
                   />
+                  {userFormErrors.full_name && (
+                    <div className="invalid-feedback d-block">
+                      {userFormErrors.full_name}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <label htmlFor="email" className="form-label">Email</label>
@@ -330,16 +486,26 @@ const AdminDashboard = () => {
                 </div>
                 <div className="mb-3">
                   <label htmlFor="password" className="form-label">Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="password"
-                    name="password"
-                    placeholder={editingUserId ? "Password (leave blank to keep current)" : "Password"}
-                    value={userForm.password}
-                    onChange={handleUserFormChange}
-                    required={!editingUserId}
-                  />
+                  <div className="input-group">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="form-control"
+                      id="password"
+                      name="password"
+                      placeholder={editingUserId ? "Password (leave blank to keep current)" : "Password"}
+                      value={userForm.password}
+                      onChange={handleUserFormChange}
+                      required={!editingUserId}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                    </button>
+                  </div>
                 </div>
                 <div className="mb-3">
                   <label htmlFor="role" className="form-label">Role</label>
@@ -675,6 +841,126 @@ const AdminDashboard = () => {
                 <div className="empty-container">
                   <i className="bi bi-exclamation-triangle"></i>
                   <p>Unable to load statistics.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Tab */}
+      {activeTab === 'feedback' && (
+        <div>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="mb-0">
+                <i className="bi bi-chat-left-text me-2"></i>Student Feedback
+              </h3>
+            </div>
+            <div className="card-body">
+              {feedbackLoading ? (
+                <div className="loading-container">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : feedback.length === 0 ? (
+                <div className="empty-container">
+                  <i className="bi bi-inbox"></i>
+                  <p>No feedback received yet.</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-column gap-3">
+                  {feedback.map((item) => (
+                    <div key={item._id} className="card">
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div>
+                            <strong>
+                              {item.student_id?.full_name || item.student_id?.username || 'Unknown Student'}
+                            </strong>
+                            {item.student_id?.email && (
+                              <span className="text-muted ms-2">({item.student_id.email})</span>
+                            )}
+                          </div>
+                          <div className="text-end">
+                            <span className={`badge ${item.status === 'Replied' ? 'bg-primary' : 'bg-warning'} me-2`}>
+                              {item.status}
+                            </span>
+                            <small className="text-muted d-block">
+                              {new Date(item.createdAt).toLocaleString('en-GB')}
+                            </small>
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <strong>Message:</strong>
+                          <p className="mb-0 mt-1">{item.message}</p>
+                        </div>
+                        {item.reply ? (
+                          <div className="border-start border-3 border-primary ps-3 mb-3">
+                            <strong className="text-primary">Your Reply:</strong>
+                            <p className="mb-0 mt-1">{item.reply}</p>
+                            <small className="text-muted">
+                              Replied on: {new Date(item.updatedAt).toLocaleString('en-GB')}
+                            </small>
+                          </div>
+                        ) : (
+                          <div>
+                            {replyingTo === item._id ? (
+                              <div className="mt-3">
+                                <div className="mb-2">
+                                  <label htmlFor={`reply-${item._id}`} className="form-label">Your Reply</label>
+                                  <textarea
+                                    id={`reply-${item._id}`}
+                                    className="form-control"
+                                    rows="3"
+                                    value={replyMessage}
+                                    onChange={(e) => setReplyMessage(e.target.value)}
+                                    placeholder="Enter your reply here..."
+                                  />
+                                </div>
+                                <div className="d-flex gap-2">
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => handleReply(item._id)}
+                                    disabled={replying}
+                                  >
+                                    {replying ? (
+                                      <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        Sending...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <i className="bi bi-send me-2"></i>Reply
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => {
+                                      setReplyingTo(null);
+                                      setReplyMessage('');
+                                    }}
+                                    disabled={replying}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => setReplyingTo(item._id)}
+                              >
+                                <i className="bi bi-reply me-2"></i>Reply
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

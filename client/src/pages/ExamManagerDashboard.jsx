@@ -21,13 +21,52 @@ const ExamManagerDashboard = () => {
     start_time: '',
     end_time: '',
     duration: 60,
+    durationUnit: 'minutes', // 'minutes' or 'hours'
   });
   const [editForm, setEditForm] = useState({
     exam_name: '',
     start_time: '',
     end_time: '',
     duration: 60,
+    durationUnit: 'minutes', // 'minutes' or 'hours'
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
+
+  // Helper function to format duration for display
+  const formatDuration = (minutes) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes === 0) {
+      return `${hours} hr${hours > 1 ? 's' : ''}`;
+    }
+    return `${hours} hr${hours > 1 ? 's' : ''} ${remainingMinutes} min`;
+  };
+
+  // Helper function to convert display value to minutes for submission
+  const convertToMinutes = (value, unit) => {
+    if (unit === 'hours') {
+      return value * 60;
+    }
+    return value;
+  };
+
+  // Helper function to convert minutes to display value
+  const convertFromMinutes = (minutes) => {
+    if (minutes >= 60) {
+      return {
+        value: Math.floor(minutes / 60),
+        unit: 'hours',
+      };
+    }
+    return {
+      value: minutes,
+      unit: 'minutes',
+    };
+  };
 
   const fetchExams = async () => {
     try {
@@ -104,27 +143,159 @@ const ExamManagerDashboard = () => {
     }
   }, [selectedExam, activeTab, token]);
 
+  const validateExamForm = (formData, isEdit = false) => {
+    const errors = {};
+    
+    // Validate exam name (same validation as username: only letters, underscore, and full stop)
+    if (!formData.exam_name || formData.exam_name.trim() === '') {
+      errors.exam_name = 'Exam name is required.';
+    } else {
+      const examNameRegex = /^[a-zA-Z._]+$/;
+      if (!examNameRegex.test(formData.exam_name)) {
+        errors.exam_name = 'Exam name can only contain letters, underscore (_), and full stop (.). No spaces, digits, or other characters allowed.';
+      }
+    }
+    
+    // Validate start time
+    if (!formData.start_time) {
+      errors.start_time = 'Start time is required.';
+    } else if (!isEdit) {
+      // Only validate start time is not in the past for new exams
+      const startDate = new Date(formData.start_time);
+      const now = new Date();
+      if (startDate < now) {
+        errors.start_time = 'Start time cannot be in the past.';
+      }
+    }
+    
+    // Validate end time
+    if (!formData.end_time) {
+      errors.end_time = 'End time is required.';
+    } else if (formData.start_time) {
+      const startDate = new Date(formData.start_time);
+      const endDate = new Date(formData.end_time);
+      if (endDate <= startDate) {
+        errors.end_time = 'End time must be after start time.';
+      }
+    }
+    
+    // Validate duration (convert to minutes for validation)
+    const durationInMinutes = convertToMinutes(formData.duration, formData.durationUnit || 'minutes');
+    if (!formData.duration || formData.duration < 1) {
+      errors.duration = formData.durationUnit === 'hours' 
+        ? 'Duration must be at least 1 hour.' 
+        : 'Duration must be at least 1 minute.';
+    } else if (durationInMinutes > 1440) {
+      errors.duration = 'Duration cannot exceed 24 hours (1440 minutes).';
+    }
+    
+    return errors;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: name === 'duration' ? Number(value) : value }));
+    let updatedForm = { ...form };
+    
+    if (name === 'duration') {
+      updatedForm.duration = Number(value);
+    } else if (name === 'durationUnit') {
+      updatedForm.durationUnit = value;
+      // Convert value when switching units
+      if (value === 'hours') {
+        // Convert minutes to hours
+        updatedForm.duration = Math.floor(updatedForm.duration / 60) || 1;
+      } else {
+        // Convert hours to minutes
+        updatedForm.duration = updatedForm.duration * 60 || 60;
+      }
+    } else {
+      updatedForm[name] = value;
+    }
+    
+    setForm(updatedForm);
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: '' });
+    }
+    
+    // Real-time validation
+    const errors = validateExamForm(updatedForm, false);
+    if (errors[name]) {
+      setFormErrors({ ...formErrors, [name]: errors[name] });
+    } else {
+      const newErrors = { ...formErrors };
+      delete newErrors[name];
+      setFormErrors(newErrors);
+    }
   };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditForm((prev) => ({ ...prev, [name]: name === 'duration' ? Number(value) : value }));
+    let updatedForm = { ...editForm };
+    
+    if (name === 'duration') {
+      updatedForm.duration = Number(value);
+    } else if (name === 'durationUnit') {
+      updatedForm.durationUnit = value;
+      // Convert value when switching units
+      if (value === 'hours') {
+        // Convert minutes to hours
+        updatedForm.duration = Math.floor(updatedForm.duration / 60) || 1;
+      } else {
+        // Convert hours to minutes
+        updatedForm.duration = updatedForm.duration * 60 || 60;
+      }
+    } else {
+      updatedForm[name] = value;
+    }
+    
+    setEditForm(updatedForm);
+    
+    // Clear error for this field when user starts typing
+    if (editFormErrors[name]) {
+      setEditFormErrors({ ...editFormErrors, [name]: '' });
+    }
+    
+    // Real-time validation (allow past dates for editing)
+    const errors = validateExamForm(updatedForm, true);
+    if (errors[name]) {
+      setEditFormErrors({ ...editFormErrors, [name]: errors[name] });
+    } else {
+      const newErrors = { ...editFormErrors };
+      delete newErrors[name];
+      setEditFormErrors(newErrors);
+    }
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate form (new exam - don't allow past dates)
+    const validationErrors = validateExamForm(form, false);
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      return;
+    }
+    
     try {
+      // Convert duration to minutes before submission
+      const durationInMinutes = convertToMinutes(form.duration, form.durationUnit);
+      const submitData = {
+        exam_name: form.exam_name,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        duration: durationInMinutes,
+      };
+      
       const res = await fetch(`${API_BASE}/api/exams`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(submitData),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -136,7 +307,9 @@ const ExamManagerDashboard = () => {
         start_time: '',
         end_time: '',
         duration: 60,
+        durationUnit: 'minutes',
       });
+      setFormErrors({}); // Clear validation errors on success
       fetchExams();
       setActiveTab('overview');
     } catch (err) {
@@ -146,12 +319,15 @@ const ExamManagerDashboard = () => {
 
   const handleEdit = (exam) => {
     setSelectedExam(exam._id);
+    const durationDisplay = convertFromMinutes(exam.duration);
     setEditForm({
       exam_name: exam.exam_name,
       start_time: new Date(exam.start_time).toISOString().slice(0, 16),
       end_time: new Date(exam.end_time).toISOString().slice(0, 16),
-      duration: exam.duration,
+      duration: durationDisplay.value,
+      durationUnit: durationDisplay.unit,
     });
+    setEditFormErrors({}); // Clear any validation errors
     setEditMode(true);
     setActiveTab('create'); // Switch to Create tab to show edit form
   };
@@ -159,14 +335,31 @@ const ExamManagerDashboard = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate form (edit mode - allow past dates)
+    const validationErrors = validateExamForm(editForm, true);
+    if (Object.keys(validationErrors).length > 0) {
+      setEditFormErrors(validationErrors);
+      return;
+    }
+    
     try {
+      // Convert duration to minutes before submission
+      const durationInMinutes = convertToMinutes(editForm.duration, editForm.durationUnit);
+      const submitData = {
+        exam_name: editForm.exam_name,
+        start_time: editForm.start_time,
+        end_time: editForm.end_time,
+        duration: durationInMinutes,
+      };
+      
       const res = await fetch(`${API_BASE}/api/exams/${selectedExam}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(submitData),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -180,7 +373,9 @@ const ExamManagerDashboard = () => {
         start_time: '',
         end_time: '',
         duration: 60,
+        durationUnit: 'minutes',
       });
+      setEditFormErrors({}); // Clear validation errors on success
       fetchExams();
       setActiveTab('overview'); // Switch back to overview after successful update
     } catch (err) {
@@ -327,7 +522,7 @@ const ExamManagerDashboard = () => {
                         <th>Exam Name</th>
                         <th>Start Time</th>
                         <th>End Time</th>
-                        <th>Duration (min)</th>
+                        <th>Duration</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -340,7 +535,7 @@ const ExamManagerDashboard = () => {
                             <td><strong>{exam.exam_name}</strong></td>
                             <td>{new Date(exam.start_time).toLocaleString('en-GB')}</td>
                             <td>{new Date(exam.end_time).toLocaleString('en-GB')}</td>
-                            <td>{exam.duration}</td>
+                            <td>{formatDuration(exam.duration)}</td>
                             <td>
                               <span className={`exam-status-badge exam-status-${status.type}`}>
                                 <i className={`bi ${status.type === 'active' ? 'bi-check-circle' : status.type === 'scheduled' ? 'bi-clock' : status.type === 'ended' ? 'bi-x-circle' : 'bi-pause-circle'} me-1`}></i>
@@ -405,52 +600,87 @@ const ExamManagerDashboard = () => {
                   <label htmlFor="edit_exam_name" className="form-label">Exam Name</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${editFormErrors.exam_name ? 'is-invalid' : ''}`}
                     id="edit_exam_name"
                     name="exam_name"
-                    placeholder="e.g., Mathematics Final Exam"
+                    placeholder="e.g., Mathematics_Final_Exam (letters, _, . only)"
                     value={editForm.exam_name}
                     onChange={handleEditChange}
                     required
                   />
+                  {editFormErrors.exam_name && (
+                    <div className="invalid-feedback d-block">
+                      {editFormErrors.exam_name}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <label htmlFor="edit_start_time" className="form-label">Start Time</label>
                   <input
                     type="datetime-local"
-                    className="form-control"
+                    className={`form-control ${editFormErrors.start_time ? 'is-invalid' : ''}`}
                     id="edit_start_time"
                     name="start_time"
                     value={editForm.start_time}
                     onChange={handleEditChange}
                     required
                   />
+                  {editFormErrors.start_time && (
+                    <div className="invalid-feedback d-block">
+                      {editFormErrors.start_time}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <label htmlFor="edit_end_time" className="form-label">End Time</label>
                   <input
                     type="datetime-local"
-                    className="form-control"
+                    className={`form-control ${editFormErrors.end_time ? 'is-invalid' : ''}`}
                     id="edit_end_time"
                     name="end_time"
                     value={editForm.end_time}
                     onChange={handleEditChange}
                     required
                   />
+                  {editFormErrors.end_time && (
+                    <div className="invalid-feedback d-block">
+                      {editFormErrors.end_time}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="edit_duration" className="form-label">Duration (minutes)</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="edit_duration"
-                    name="duration"
-                    value={editForm.duration}
-                    onChange={handleEditChange}
-                    min={1}
-                    required
-                  />
+                  <label htmlFor="edit_duration" className="form-label">
+                    Duration {editForm.durationUnit === 'hours' ? '(hours)' : '(minutes)'}
+                  </label>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      className={`form-control ${editFormErrors.duration ? 'is-invalid' : ''}`}
+                      id="edit_duration"
+                      name="duration"
+                      value={editForm.duration}
+                      onChange={handleEditChange}
+                      min={1}
+                      max={editForm.durationUnit === 'hours' ? 24 : 59}
+                      required
+                    />
+                    <select
+                      className="form-select"
+                      name="durationUnit"
+                      value={editForm.durationUnit}
+                      onChange={handleEditChange}
+                      style={{ maxWidth: '120px' }}
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                    </select>
+                  </div>
                   <small className="form-text text-muted">Time limit for each student to complete the exam</small>
+                  {editFormErrors.duration && (
+                    <div className="invalid-feedback d-block">
+                      {editFormErrors.duration}
+                    </div>
+                  )}
                 </div>
                 <div className="d-flex gap-2">
                   <button type="submit" className="btn btn-success flex-fill">
@@ -467,7 +697,9 @@ const ExamManagerDashboard = () => {
                         start_time: '',
                         end_time: '',
                         duration: 60,
+                        durationUnit: 'minutes',
                       });
+                      setEditFormErrors({}); // Clear validation errors
                     }}
                   >
                     <i className="bi bi-x-circle me-2"></i>Cancel
@@ -480,52 +712,87 @@ const ExamManagerDashboard = () => {
                   <label htmlFor="exam_name" className="form-label">Exam Name</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${formErrors.exam_name ? 'is-invalid' : ''}`}
                     id="exam_name"
                     name="exam_name"
-                    placeholder="e.g., Mathematics Final Exam"
+                    placeholder="e.g., Mathematics_Final_Exam (letters, _, . only)"
                     value={form.exam_name}
                     onChange={handleChange}
                     required
                   />
+                  {formErrors.exam_name && (
+                    <div className="invalid-feedback d-block">
+                      {formErrors.exam_name}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <label htmlFor="start_time" className="form-label">Start Time</label>
                   <input
                     type="datetime-local"
-                    className="form-control"
+                    className={`form-control ${formErrors.start_time ? 'is-invalid' : ''}`}
                     id="start_time"
                     name="start_time"
                     value={form.start_time}
                     onChange={handleChange}
                     required
                   />
+                  {formErrors.start_time && (
+                    <div className="invalid-feedback d-block">
+                      {formErrors.start_time}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <label htmlFor="end_time" className="form-label">End Time</label>
                   <input
                     type="datetime-local"
-                    className="form-control"
+                    className={`form-control ${formErrors.end_time ? 'is-invalid' : ''}`}
                     id="end_time"
                     name="end_time"
                     value={form.end_time}
                     onChange={handleChange}
                     required
                   />
+                  {formErrors.end_time && (
+                    <div className="invalid-feedback d-block">
+                      {formErrors.end_time}
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="duration" className="form-label">Duration (minutes)</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="duration"
-                    name="duration"
-                    value={form.duration}
-                    onChange={handleChange}
-                    min={1}
-                    required
-                  />
+                  <label htmlFor="duration" className="form-label">
+                    Duration {form.durationUnit === 'hours' ? '(hours)' : '(minutes)'}
+                  </label>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      className={`form-control ${formErrors.duration ? 'is-invalid' : ''}`}
+                      id="duration"
+                      name="duration"
+                      value={form.duration}
+                      onChange={handleChange}
+                      min={1}
+                      max={form.durationUnit === 'hours' ? 24 : 59}
+                      required
+                    />
+                    <select
+                      className="form-select"
+                      name="durationUnit"
+                      value={form.durationUnit}
+                      onChange={handleChange}
+                      style={{ maxWidth: '120px' }}
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                    </select>
+                  </div>
                   <small className="form-text text-muted">Time limit for each student to complete the exam</small>
+                  {formErrors.duration && (
+                    <div className="invalid-feedback d-block">
+                      {formErrors.duration}
+                    </div>
+                  )}
                 </div>
                 <button type="submit" className="btn btn-success">
                   <i className="bi bi-plus-circle me-2"></i>Create Exam
@@ -597,41 +864,59 @@ const ExamManagerDashboard = () => {
                         <span className="visually-hidden">Loading...</span>
                       </div>
                     </div>
-                  ) : examDetails ? (
-                    <div>
-                      {/* Exam Stats */}
-                      <div className="exam-stats-grid">
-                        <div className="exam-stat-card">
-                          <div className="exam-stat-label">Questions</div>
-                          <div className="exam-stat-value primary">{examDetails.questionsCount}</div>
+                  ) : examDetails ? (() => {
+                    // Filter out attempts from deleted users
+                    const validAllAttempts = allAttempts.filter((attempt) => attempt.student_id);
+                    const validOngoingAttempts = ongoingAttempts.filter((attempt) => attempt.student_id);
+                    
+                    // Calculate stats from filtered attempts
+                    const totalAttempts = validAllAttempts.length;
+                    const completedAttempts = validAllAttempts.filter((attempt) => attempt.completed).length;
+                    const ongoingCount = validOngoingAttempts.length;
+                    
+                    // Calculate average score from completed attempts only
+                    const completedWithScores = validAllAttempts.filter(
+                      (attempt) => attempt.completed && attempt.total_score !== undefined
+                    );
+                    const averageScore = completedWithScores.length > 0
+                      ? (completedWithScores.reduce((sum, attempt) => sum + attempt.total_score, 0) / completedWithScores.length).toFixed(2)
+                      : '0.00';
+                    
+                    return (
+                      <div>
+                        {/* Exam Stats */}
+                        <div className="exam-stats-grid">
+                          <div className="exam-stat-card">
+                            <div className="exam-stat-label">Questions</div>
+                            <div className="exam-stat-value primary">{examDetails.questionsCount}</div>
+                          </div>
+                          <div className="exam-stat-card">
+                            <div className="exam-stat-label">Total Attempts</div>
+                            <div className="exam-stat-value info">{totalAttempts}</div>
+                          </div>
+                          <div className="exam-stat-card">
+                            <div className="exam-stat-label">Completed</div>
+                            <div className="exam-stat-value success">{completedAttempts}</div>
+                          </div>
+                          <div className="exam-stat-card">
+                            <div className="exam-stat-label">Ongoing</div>
+                            <div className="exam-stat-value warning">{ongoingCount}</div>
+                          </div>
+                          <div className="exam-stat-card">
+                            <div className="exam-stat-label">Average Score</div>
+                            <div className="exam-stat-value purple">{averageScore}</div>
+                          </div>
                         </div>
-                        <div className="exam-stat-card">
-                          <div className="exam-stat-label">Total Attempts</div>
-                          <div className="exam-stat-value info">{examDetails.attempts.total}</div>
-                        </div>
-                        <div className="exam-stat-card">
-                          <div className="exam-stat-label">Completed</div>
-                          <div className="exam-stat-value success">{examDetails.attempts.completed}</div>
-                        </div>
-                        <div className="exam-stat-card">
-                          <div className="exam-stat-label">Ongoing</div>
-                          <div className="exam-stat-value warning">{examDetails.attempts.ongoing}</div>
-                        </div>
-                        <div className="exam-stat-card">
-                          <div className="exam-stat-label">Average Score</div>
-                          <div className="exam-stat-value purple">{examDetails.attempts.averageScore}</div>
-                        </div>
-                      </div>
 
                       {/* Ongoing Attempts */}
                       <div className="card mb-4">
                         <div className="card-header">
                           <h5 className="mb-0">
-                            <i className="bi bi-clock-history me-2"></i>Ongoing Attempts ({ongoingAttempts.length})
+                            <i className="bi bi-clock-history me-2"></i>Ongoing Attempts ({validOngoingAttempts.length})
                           </h5>
                         </div>
                         <div className="card-body">
-                          {ongoingAttempts.length === 0 ? (
+                          {validOngoingAttempts.length === 0 ? (
                             <div className="empty-container">
                               <i className="bi bi-inbox"></i>
                               <p>No ongoing attempts</p>
@@ -648,12 +933,12 @@ const ExamManagerDashboard = () => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {ongoingAttempts.map((attempt) => {
+                                  {validOngoingAttempts.map((attempt) => {
                                     const duration = Math.floor((new Date() - new Date(attempt.start_time)) / 60000);
                                     return (
                                       <tr key={attempt._id}>
-                                        <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
-                                        <td>{attempt.student_id?.email}</td>
+                                        <td>{attempt.student_id?.full_name || attempt.student_id?.username || 'N/A'}</td>
+                                        <td>{attempt.student_id?.email || 'N/A'}</td>
                                         <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
                                         <td>{duration} minutes</td>
                                       </tr>
@@ -670,11 +955,11 @@ const ExamManagerDashboard = () => {
                       <div className="card">
                         <div className="card-header">
                           <h5 className="mb-0">
-                            <i className="bi bi-list-check me-2"></i>All Attempts
+                            <i className="bi bi-list-check me-2"></i>All Attempts ({validAllAttempts.length})
                           </h5>
                         </div>
                         <div className="card-body">
-                          {allAttempts.length === 0 ? (
+                          {validAllAttempts.length === 0 ? (
                             <div className="empty-container">
                               <i className="bi bi-inbox"></i>
                               <p>No attempts yet</p>
@@ -693,25 +978,25 @@ const ExamManagerDashboard = () => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {allAttempts.map((attempt) => (
-                                    <tr key={attempt._id}>
-                                      <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
-                                      <td>{attempt.student_id?.email}</td>
-                                      <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
-                                      <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
-                                      <td>
-                                        <strong className={`score-display ${attempt.completed ? (attempt.total_score >= examDetails.questionsCount / 2 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
-                                          {attempt.completed ? `${attempt.total_score} / ${examDetails.questionsCount}` : '-'}
-                                        </strong>
-                                      </td>
-                                      <td>
-                                        <span className={`status-badge ${attempt.completed ? 'status-completed' : 'status-pending'}`}>
-                                          <i className={`bi ${attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
-                                          {attempt.completed ? 'Completed' : 'In Progress'}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {validAllAttempts.map((attempt) => (
+                                      <tr key={attempt._id}>
+                                        <td>{attempt.student_id?.full_name || attempt.student_id?.username || 'N/A'}</td>
+                                        <td>{attempt.student_id?.email || 'N/A'}</td>
+                                        <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
+                                        <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
+                                        <td>
+                                          <strong className={`score-display ${attempt.completed ? (attempt.total_score >= examDetails.questionsCount / 2 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                                            {attempt.completed ? `${attempt.total_score} / ${examDetails.questionsCount}` : '-'}
+                                          </strong>
+                                        </td>
+                                        <td>
+                                          <span className={`status-badge ${attempt.completed ? 'status-completed' : 'status-pending'}`}>
+                                            <i className={`bi ${attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                            {attempt.completed ? 'Completed' : 'In Progress'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
                                 </tbody>
                               </table>
                             </div>
@@ -719,7 +1004,8 @@ const ExamManagerDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  ) : (
+                    );
+                  })() : (
                     <div className="empty-container">
                       <i className="bi bi-exclamation-triangle"></i>
                       <p>Failed to load exam details</p>

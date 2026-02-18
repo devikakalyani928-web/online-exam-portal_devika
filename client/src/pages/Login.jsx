@@ -9,6 +9,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -47,30 +48,26 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="mb-3">
             <label htmlFor="email" className="form-label">
-              <i className="bi bi-envelope me-2"></i>Email Address
+              Email Address
             </label>
-            <div className="input-group">
-              <i className="bi bi-envelope"></i>
-              <input
-                type="email"
-                className="form-control"
-                id="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+            <input
+              type="email"
+              className="form-control"
+              id="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
           <div className="mb-3">
             <label htmlFor="password" className="form-label">
-              <i className="bi bi-lock me-2"></i>Password
+              Password
             </label>
             <div className="input-group">
-              <i className="bi bi-lock"></i>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-control"
                 id="password"
                 placeholder="Enter your password"
@@ -78,6 +75,14 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+              </button>
             </div>
           </div>
 

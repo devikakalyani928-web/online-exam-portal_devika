@@ -67,8 +67,10 @@ const getAllResults = async (req, res) => {
       .populate('student_id', 'username full_name email')
       .sort({ createdAt: -1 });
     
-    // Filter out attempts where exam_id is null (exam was deleted)
-    const validAttempts = attempts.filter(attempt => attempt.exam_id !== null);
+    // Filter out attempts where exam_id is null (exam was deleted) or student_id is null (student was deleted)
+    const validAttempts = attempts.filter(attempt => 
+      attempt.exam_id !== null && attempt.student_id !== null
+    );
     
     return res.json(validAttempts);
   } catch (error) {
@@ -82,6 +84,8 @@ const getSystemStats = async (req, res) => {
   try {
     // Get all valid exam IDs to filter out orphaned attempts
     const validExamIds = await Exam.find().distinct('_id');
+    // Get all valid student IDs (students that still exist)
+    const validStudentIds = await User.find({ role: 'Student' }).distinct('_id');
     
     const [
       totalUsers,
@@ -95,8 +99,8 @@ const getSystemStats = async (req, res) => {
       User.countDocuments(),
       Exam.countDocuments(),
       Question.countDocuments(),
-      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds } }),
-      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, completed: true }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds } }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: true }),
       User.aggregate([
         { $group: { _id: '$role', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
@@ -106,7 +110,7 @@ const getSystemStats = async (req, res) => {
 
     // Calculate average score (only for valid attempts)
     const scoreData = await ExamAttempt.aggregate([
-      { $match: { exam_id: { $in: validExamIds }, completed: true } },
+      { $match: { exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: true } },
       {
         $group: {
           _id: null,

@@ -67,8 +67,10 @@ const getAllResults = async (req, res) => {
       .populate('exam_id', 'exam_name')
       .populate('student_id', 'username full_name email');
     
-    // Filter out attempts where exam_id is null (exam was deleted)
-    const validAttempts = attempts.filter(attempt => attempt.exam_id !== null);
+    // Filter out attempts where exam_id is null (exam was deleted) or student_id is null (student was deleted)
+    const validAttempts = attempts.filter(attempt => 
+      attempt.exam_id !== null && attempt.student_id !== null
+    );
     
     return res.json(validAttempts);
   } catch (error) {
@@ -84,7 +86,11 @@ const getResultsByExam = async (req, res) => {
     const attempts = await ExamAttempt.find({ exam_id: examId })
       .populate('exam_id', 'exam_name')
       .populate('student_id', 'username full_name email');
-    return res.json(attempts);
+    
+    // Filter out attempts where student_id is null (student was deleted)
+    const validAttempts = attempts.filter(attempt => attempt.student_id !== null);
+    
+    return res.json(validAttempts);
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -174,8 +180,10 @@ const getResultsByStudent = async (req, res) => {
       .populate('student_id', 'username full_name email')
       .sort({ createdAt: -1 });
     
-    // Filter out attempts where exam_id is null (exam was deleted)
-    const validAttempts = attempts.filter(attempt => attempt.exam_id !== null);
+    // Filter out attempts where exam_id is null (exam was deleted) or student_id is null (student was deleted)
+    const validAttempts = attempts.filter(attempt => 
+      attempt.exam_id !== null && attempt.student_id !== null
+    );
     
     return res.json(validAttempts);
   } catch (error) {
@@ -193,6 +201,11 @@ const getAttemptDetails = async (req, res) => {
       .populate('student_id', 'username full_name email');
 
     if (!attempt) {
+      return res.status(404).json({ message: 'Attempt not found' });
+    }
+
+    // Filter out attempts where student_id is null (student was deleted) or exam_id is null (exam was deleted)
+    if (!attempt.student_id || !attempt.exam_id) {
       return res.status(404).json({ message: 'Attempt not found' });
     }
 
@@ -217,6 +230,8 @@ const getResultStats = async (req, res) => {
   try {
     // Get all valid exam IDs (exams that still exist)
     const validExamIds = await Exam.find().distinct('_id');
+    // Get all valid student IDs (students that still exist)
+    const validStudentIds = await User.find({ role: 'Student' }).distinct('_id');
     
     const [
       totalAttempts,
@@ -226,15 +241,15 @@ const getResultStats = async (req, res) => {
       examStats,
       studentStats,
     ] = await Promise.all([
-      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds } }),
-      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, completed: true }),
-      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, completed: false }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds } }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: true }),
+      ExamAttempt.countDocuments({ exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: false }),
       ExamAttempt.aggregate([
-        { $match: { exam_id: { $in: validExamIds }, completed: true } },
+        { $match: { exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: true } },
         { $group: { _id: null, avg: { $avg: '$total_score' } } },
       ]),
       ExamAttempt.aggregate([
-        { $match: { exam_id: { $in: validExamIds }, completed: true } },
+        { $match: { exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: true } },
         {
           $group: {
             _id: '$exam_id',
@@ -265,7 +280,7 @@ const getResultStats = async (req, res) => {
         { $sort: { totalAttempts: -1 } },
       ]),
       ExamAttempt.aggregate([
-        { $match: { exam_id: { $in: validExamIds }, completed: true } },
+        { $match: { exam_id: { $in: validExamIds }, student_id: { $in: validStudentIds }, completed: true } },
         {
           $group: {
             _id: '$student_id',
@@ -326,11 +341,14 @@ const getExamReport = async (req, res) => {
       .populate('student_id', 'username full_name email')
       .sort({ createdAt: -1 });
 
-    const completedAttempts = attempts.filter((a) => a.completed);
-    const ongoingAttempts = attempts.filter((a) => !a.completed);
+    // Filter out attempts where student_id is null (student was deleted)
+    const validAttempts = attempts.filter(attempt => attempt.student_id !== null);
+
+    const completedAttempts = validAttempts.filter((a) => a.completed);
+    const ongoingAttempts = validAttempts.filter((a) => !a.completed);
 
     const stats = {
-      totalStudents: attempts.length,
+      totalStudents: validAttempts.length,
       completed: completedAttempts.length,
       ongoing: ongoingAttempts.length,
       averageScore: 0,
@@ -362,7 +380,7 @@ const getExamReport = async (req, res) => {
         total: totalQuestions,
       },
       attempts: {
-        all: attempts,
+        all: validAttempts,
         completed: completedAttempts,
         ongoing: ongoingAttempts,
       },

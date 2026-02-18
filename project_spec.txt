@@ -19,9 +19,9 @@ Features of the Proposed System
 a. Online Test Management
 The administrator can create, edit, and manage online examinations by adding multiple-choice questions with four options. Tests can be activated or deactivated as required.
 b. Secure User Authentication
-Users must register and log in using valid credentials before attending the examination. This ensures secure access and prevents unauthorized usage.
+Users must register and log in using valid credentials before attending the examination. This ensures secure access and prevents unauthorized usage. Password fields include visibility toggle functionality for enhanced user experience. Username validation requires letters, underscore (_), and full stop (.) only. Full name validation requires letters and spaces only, with a minimum of 2 characters.
 c. Automated Evaluation and Result Calculation
-The system automatically evaluates the answers submitted by the user and calculates the total score instantly, eliminating manual correction and human errors.
+The system automatically evaluates the answers submitted by the user and calculates the total score instantly, eliminating manual correction and human errors. Unanswered questions are automatically treated as zero marks. The system determines pass/fail status based on a 40% pass mark threshold. Results include detailed performance summaries with total questions, correct answers, wrong answers, unanswered questions, accuracy percentage, and duration taken.
 d. Retake Prevention Mechanism
 The system restricts users from attempting the same exam more than once, ensuring fairness and preventing misuse of the examination process.
 e. Real-Time Result Display
@@ -30,6 +30,16 @@ f. Data Storage and Management
 All exam details, user information, and results are securely stored in the database for future reference and reporting.
 g. User-Friendly Interface
 The system provides a simple and easy-to-use interface that allows users and administrators to navigate the portal without technical difficulty.
+h. Student Feedback System
+Students can submit feedback messages to administrators. Administrators can view all feedback and reply to student messages, facilitating communication and support.
+i. Enhanced Form Validation
+The system includes comprehensive validation for usernames (letters, underscore, and full stop only), full names (letters and spaces, minimum 2 characters), and exam names (letters, underscore, and full stop only).
+j. Flexible Exam Duration
+Exam duration can be set in minutes (for durations less than 60 minutes) or hours (for durations 60 minutes or more), with automatic conversion for internal calculations.
+k. Flexible Exam Submission
+Students can submit exams with unanswered questions, which are automatically treated as zero marks. This allows for partial completion while maintaining accurate scoring.
+l. Pass/Fail Evaluation
+The system automatically determines pass/fail status based on a 40% pass mark threshold, displaying results with clear pass/fail indicators.
 
 4. USER ROLES & PERMISSIONS
 
@@ -39,12 +49,16 @@ Creates, modifies, and deletes user accounts.
 Assigns roles and permissions to users.
 Manages overall system configuration and security.
 Views all examinations, results, and system activity logs.
+Views and replies to student feedback messages.
+Monitors system statistics and user activity.
 2. Exam Manager
 Creates and schedules online examinations.
-Sets exam duration and availability.
+Sets exam duration in minutes or hours (for durations >= 60 minutes).
 Activates and deactivates exams as required.
 Monitors ongoing exams and exam status.
 Ensures that exam rules are properly enforced.
+Validates exam names (letters, underscore, and full stop only).
+Filters out attempts from deleted users/exams when viewing results.
 3. Question Manager
 Creates and maintains the question bank.
 Adds multiple-choice questions with four options.
@@ -53,27 +67,31 @@ Assigns correct answers for automatic evaluation.
 Ensures question quality and avoids duplication.
 4. Result Manager
 Views automatically evaluated exam results.
-Generates result summaries and reports.
+Generates result summaries and reports with detailed performance metrics.
 Verifies exam completion and submission status.
 Accesses student performance data in read-only mode.
 Does not have permission to modify marks or answers.
+Views detailed attempt information including performance summary (total questions, correct answers, wrong answers, unanswered, accuracy, duration taken).
+Filters out attempts with deleted users/exams (zombie data) to ensure data integrity.
 5. Student
 Registers and logs into the system using valid credentials.
 Views available online examinations.
 Attempts each examination only once.
-Selects answers and submits the exam.
-Views results immediately after exam submission.
+Selects answers and submits the exam (can leave questions unanswered).
+Views results immediately after exam submission, including pass/fail status.
+Submits feedback messages to administrators and views admin replies.
 
 5.DATABASE STRUCTURE (Schemas)
 
 A. User Schema
 user_id (Int, Primary Key)
-username (String, Unique)
-full_name (String)
+username (String, Unique) - Validation: letters, underscore (_), and full stop (.) only
+full_name (String) - Validation: letters and spaces only, minimum 2 characters
 email (String, Unique)
 password (Hashed)
 role (String: 'System Admin' / 'Exam Manager' / 'Question Manager' / 'Result Manager' / 'Student')
 created_at (DateTime)
+updated_at (DateTime)
 B. Student Schema
 student_id (Int, Primary Key)
 user_id (Int, Foreign Key → User.user_id)
@@ -82,11 +100,14 @@ section (String)
 dob (Date)
 C. Exam Schema
 exam_id (Int, Primary Key)
-exam_name (String)
+exam_name (String) - Validation: letters, underscore (_), and full stop (.) only
 start_time (DateTime)
 end_time (DateTime)
-duration (Int, in minutes)
+duration (Int, in minutes) - Can be set in hours when >= 60 minutes
+is_active (Boolean) - Indicates if exam is active or deactivated
 created_by (Int, Foreign Key → User.user_id)
+created_at (DateTime)
+updated_at (DateTime)
 D. Question Schema
 question_id (Int, Primary Key)
 exam_id (Int, Foreign Key → Exam.exam_id)
@@ -109,8 +130,17 @@ F. Student_Answers Schema
 answer_id (Int, Primary Key)
 attempt_id (Int, Foreign Key → Exam_Attempts.attempt_id)
 question_id (Int, Foreign Key → Question.question_id)
-selected_option (Int: 1/2/3/4)
+selected_option (Int: 1/2/3/4 or null) - Null indicates unanswered question
 is_correct (Boolean)
+created_at (DateTime)
+G. Feedback Schema
+feedback_id (Int, Primary Key)
+student_id (Int, Foreign Key → User.user_id)
+message (String) - Student's feedback message
+reply (String, nullable) - Admin's reply message
+status (String: 'Pending' / 'Replied')
+created_at (DateTime)
+updated_at (DateTime)
 
 6.FEATURE WORKFLOW (The "User Journey")
 
@@ -120,12 +150,14 @@ Add: Creates users such as Exam Manager, Question Manager, Result Manager, and S
 Assign: Assigns roles and permissions to users.
 Manage: Monitors system activity and user access.
 Review: Reviews overall exam performance and system reports.
+Feedback: Views all student feedback messages and replies to them.
 User Journey – Exam Manager
 Login: Exam Manager logs in and lands on the Menu Page.
-Create: Creates new online exams.
-Schedule: Sets exam duration, start time, and end time.
+Create: Creates new online exams with validated exam names.
+Schedule: Sets exam duration (in minutes or hours), start time, and end time.
 Activate: Activates or deactivates exams.
 Monitor: Monitors ongoing exams and exam status.
+Filter: Views only valid exam attempts (filters out deleted users/exams).
 User Journey – Question Manager
 Login: Question Manager logs in and lands on the Menu Page.
 Select: Selects an exam to manage questions.
@@ -143,11 +175,12 @@ User Journey – Student
 Login: Student logs in and lands on the Menu Page.
 Browse: Views list of available online exams.
 Start: Selects and starts an exam.
-Attempt: Answers MCQ questions within the given time.
-Submit: Submits the exam.
-Evaluate: System automatically evaluates the exam.
-View: Student views results immediately after submission.
+Attempt: Answers MCQ questions within the given time (can leave questions unanswered).
+Submit: Submits the exam (unanswered questions are treated as zero marks).
+Evaluate: System automatically evaluates the exam and determines pass/fail (40% pass mark).
+View: Student views results immediately after submission, including pass/fail status, percentage, and performance summary.
 Restrict: Student cannot retake the same exam.
+Feedback: Submits feedback messages to administrators and views admin replies.
 
 7. API ENDPOINTS (The URL Rules)
 
@@ -167,15 +200,23 @@ DELETE /api/users/:id
 → Delete user (Admin only)
 Exam Management (Exam Manager)
 POST /api/exams
-→ Create new exam
+→ Create new exam (with validated exam name)
 GET /api/exams
 → Get list of all exams
+GET /api/exams/:id/details
+→ Get exam details including question count
+GET /api/exams/:id/attempts
+→ Get all attempts for an exam
+GET /api/exams/:id/ongoing
+→ Get ongoing attempts for an exam
 PUT /api/exams/:id
 → Update exam details
 POST /api/exams/:id/activate
 → Activate exam
 POST /api/exams/:id/deactivate
 → Deactivate exam
+DELETE /api/exams/:id
+→ Delete exam
 Question Management (Question Manager)
 POST /api/questions
 → Add new MCQ question
@@ -194,8 +235,17 @@ POST /api/exams/:id/submit
 → Submit exam
 Results (Result Manager / Student)
 GET /api/results
-→ Get all exam results (Result Manager)
+→ Get all exam results (Result Manager) - Filters out attempts with deleted users/exams
 GET /api/results/:examId
-→ Get results of a specific exam
+→ Get results of a specific exam - Filters out attempts with deleted users
 GET /api/results/student/:studentId
-→ Get results of a student
+→ Get results of a student - Filters out attempts with deleted users/exams
+GET /api/results/attempt/:attemptId
+→ Get detailed attempt information including performance summary
+Feedback (Student / System Admin)
+POST /api/feedback
+→ Submit feedback message (Student) or Get all feedback (System Admin)
+GET /api/feedback/student/me
+→ Get feedback submitted by the logged-in student
+POST /api/feedback/:id/reply
+→ Reply to a feedback message (System Admin only)

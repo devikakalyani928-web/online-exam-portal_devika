@@ -37,7 +37,11 @@ const ResultManagerDashboard = () => {
       });
       if (!res.ok) throw new Error('Failed to load results');
       const data = await res.json();
-      setResults(data);
+      // Filter out any attempts with null student_id or exam_id (safety check)
+      const validResults = data.filter(result => 
+        result.student_id !== null && result.exam_id !== null
+      );
+      setResults(validResults);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -159,6 +163,37 @@ const ResultManagerDashboard = () => {
       fetchExamReport(selectedExamForReport);
     }
   }, [selectedExamForReport, activeTab, token]);
+
+  // Helper function to format duration
+  const formatDuration = (startTime, endTime) => {
+    if (!endTime) return 'N/A';
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diffMs = end - start;
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    } else {
+      return `${minutes}m ${seconds}s`;
+    }
+  };
+
+  // Helper function to format percentage (remove .00 if whole number, otherwise show up to 2 decimals)
+  const formatPercentage = (value) => {
+    if (value === 0 || value === null || value === undefined) return '0';
+    const num = parseFloat(value);
+    if (isNaN(num)) return '0';
+    // If it's a whole number, return without decimals
+    if (num % 1 === 0) {
+      return num.toString();
+    }
+    // Otherwise, show up to 2 decimal places, removing trailing zeros
+    return parseFloat(num.toFixed(2)).toString();
+  };
 
   return (
     <div className="result-manager-dashboard">
@@ -283,68 +318,101 @@ const ResultManagerDashboard = () => {
                   </div>
                 ) : (
                   <div>
-                    <div className="attempt-details-header">
-                      <div className="row">
-                        <div className="col-md-6 mb-2">
-                          <strong><i className="bi bi-file-earmark-text me-2"></i>Exam:</strong> {attemptDetails.attempt.exam_id?.exam_name}
-                        </div>
-                        <div className="col-md-6 mb-2">
-                          <strong><i className="bi bi-person me-2"></i>Student:</strong> {attemptDetails.attempt.student_id?.full_name} ({attemptDetails.attempt.student_id?.email})
-                        </div>
-                        <div className="col-md-6 mb-2">
-                          <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {attemptDetails.attempt.total_score} / {attemptDetails.answers.length}
-                        </div>
-                        <div className="col-md-6 mb-2">
-                          <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
-                          <span className={`status-badge ${attemptDetails.attempt.completed ? 'status-completed' : 'status-pending'}`}>
-                            <i className={`bi ${attemptDetails.attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
-                            {attemptDetails.attempt.completed ? 'Completed' : 'In Progress'}
-                          </span>
-                        </div>
-                        <div className="col-md-6 mb-2">
-                          <strong><i className="bi bi-play-circle me-2"></i>Started:</strong> {new Date(attemptDetails.attempt.start_time).toLocaleString('en-GB')}
-                        </div>
-                        {attemptDetails.attempt.end_time && (
-                          <div className="col-md-6 mb-2">
-                            <strong><i className="bi bi-check-circle me-2"></i>Submitted:</strong> {new Date(attemptDetails.attempt.end_time).toLocaleString('en-GB')}
+                    {(() => {
+                      const totalMarks = attemptDetails.answers.length;
+                      const marksObtained = attemptDetails.attempt.total_score;
+                      const percentageValue = totalMarks > 0 ? ((marksObtained / totalMarks) * 100) : 0;
+                      const percentage = formatPercentage(percentageValue);
+                      const isPassed = percentageValue >= 40;
+                      return (
+                        <div className="attempt-details-header">
+                          <div className="row">
+                            {/* Left Column */}
+                            <div className="col-md-6">
+                              <div className="mb-3">
+                                <strong><i className="bi bi-file-earmark-text me-2"></i>Exam:</strong> {attemptDetails.attempt.exam_id?.exam_name}
+                              </div>
+                              <div className="mb-3">
+                                <strong><i className="bi bi-list-check me-2"></i>Total Marks:</strong> {totalMarks}
+                              </div>
+                              <div className="mb-3">
+                                <strong><i className="bi bi-trophy me-2"></i>Marks Obtained:</strong> {marksObtained}
+                              </div>
+                              <div className="mb-3">
+                                <strong><i className="bi bi-percent me-2"></i>Percentage:</strong> {percentage}%
+                              </div>
+                              <div className="mb-3">
+                                <strong><i className="bi bi-award me-2"></i>Result:</strong>{' '}
+                                <span className={`status-badge ${isPassed ? 'status-completed' : 'status-failed'}`}>
+                                  <i className={`bi ${isPassed ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                                  {isPassed ? 'Passed' : 'Failed'}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Right Column */}
+                            <div className="col-md-6">
+                              <div className="mb-3">
+                                <strong><i className="bi bi-person me-2"></i>Student:</strong> {attemptDetails.attempt.student_id?.full_name} ({attemptDetails.attempt.student_id?.email})
+                              </div>
+                              <div className="mb-3">
+                                <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
+                                <span className={`status-badge ${attemptDetails.attempt.completed ? 'status-completed' : 'status-pending'}`}>
+                                  <i className={`bi ${attemptDetails.attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                  {attemptDetails.attempt.completed ? 'Completed' : 'In Progress'}
+                                </span>
+                              </div>
+                              <div className="mb-3">
+                                <strong><i className="bi bi-play-circle me-2"></i>Started:</strong> {new Date(attemptDetails.attempt.start_time).toLocaleString('en-GB')}
+                              </div>
+                              {attemptDetails.attempt.end_time && (
+                                <div className="mb-3">
+                                  <strong><i className="bi bi-check-circle me-2"></i>Submitted:</strong> {new Date(attemptDetails.attempt.end_time).toLocaleString('en-GB')}
+                                </div>
+                              )}
+                              {attemptDetails.attempt.end_time && (
+                                <div className="mb-3">
+                                  <strong><i className="bi bi-clock-history me-2"></i>Duration Taken:</strong> {formatDuration(attemptDetails.attempt.start_time, attemptDetails.attempt.end_time)}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
+                        </div>
+                      );
+                    })()}
 
-                    <h4 className="mt-4 mb-3">
-                      <i className="bi bi-list-ul me-2"></i>Answers:
-                    </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {attemptDetails.answers.map((answer, idx) => (
-                        <div
-                          key={answer._id}
-                          className={`answer-card ${answer.is_correct ? 'correct' : 'incorrect'}`}
-                        >
-                          <p className="fw-bold mb-2">
-                            Question {idx + 1}: {answer.question_id?.question_text}
-                          </p>
-                          <div className="answer-options">
-                            <p>1. {answer.question_id?.option1}</p>
-                            <p>2. {answer.question_id?.option2}</p>
-                            <p>3. {answer.question_id?.option3}</p>
-                            <p>4. {answer.question_id?.option4}</p>
+                    {(() => {
+                      const totalQuestions = attemptDetails.answers.length;
+                      const correctAnswers = attemptDetails.answers.filter(a => a.is_correct === true).length;
+                      const wrongAnswers = attemptDetails.answers.filter(a => a.selected_option != null && a.is_correct === false).length;
+                      const unanswered = attemptDetails.answers.filter(a => a.selected_option == null || a.selected_option === undefined).length;
+                      const accuracyValue = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100) : 0;
+                      const accuracy = formatPercentage(accuracyValue);
+                      
+                      return (
+                        <div className="performance-summary mt-4">
+                          <h4 className="mb-3">
+                            <i className="bi bi-graph-up me-2"></i>Performance Summary
+                          </h4>
+                          <div className="row">
+                            <div className="col-md-3 mb-2">
+                              <strong><i className="bi bi-list-ul me-2"></i>Total Questions:</strong> {totalQuestions}
+                            </div>
+                            <div className="col-md-3 mb-2">
+                              <strong><i className="bi bi-check-circle-fill text-success me-2"></i>Correct Answers:</strong> {correctAnswers}
+                            </div>
+                            <div className="col-md-3 mb-2">
+                              <strong><i className="bi bi-x-circle-fill text-danger me-2"></i>Wrong Answers:</strong> {wrongAnswers}
+                            </div>
+                            <div className="col-md-3 mb-2">
+                              <strong><i className="bi bi-dash-circle text-warning me-2"></i>Unanswered:</strong> {unanswered}
+                            </div>
+                            <div className="col-md-12 mb-2">
+                              <strong><i className="bi bi-speedometer2 me-2"></i>Accuracy:</strong> {accuracy}%
+                            </div>
                           </div>
-                          <p className="answer-result mt-2">
-                            <strong>Student Selected:</strong> Option {answer.selected_option}
-                            {answer.is_correct ? (
-                              <span className="correct ms-2">
-                                <i className="bi bi-check-circle-fill me-1"></i>Correct
-                              </span>
-                            ) : (
-                              <span className="incorrect ms-2">
-                                <i className="bi bi-x-circle-fill me-1"></i>Incorrect (Correct: Option {answer.question_id?.correct_option})
-                              </span>
-                            )}
-                          </p>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

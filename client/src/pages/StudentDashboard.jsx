@@ -21,6 +21,10 @@ const StudentDashboard = () => {
   const [selectedResult, setSelectedResult] = useState(null);
   const [resultDetails, setResultDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [myFeedback, setMyFeedback] = useState([]);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState('');
 
   const fetchAvailableExams = async () => {
     try {
@@ -89,13 +93,65 @@ const StudentDashboard = () => {
     }
   };
 
+  const fetchMyFeedback = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/feedback/student/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to load feedback');
+      const data = await res.json();
+      setMyFeedback(data);
+    } catch (err) {
+      console.error('Error fetching feedback:', err);
+    }
+  };
+
+  const submitFeedback = async (e) => {
+    e.preventDefault();
+    if (!feedbackMessage.trim()) {
+      setError('Please enter a message');
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    setError('');
+    setFeedbackSuccess('');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: feedbackMessage }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to submit feedback');
+      }
+
+      setFeedbackMessage('');
+      setFeedbackSuccess('Feedback submitted successfully!');
+      fetchMyFeedback();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchAvailableExams();
       fetchMyResults();
+      if (activeTab === 'feedback') {
+        fetchMyFeedback();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, activeTab]);
 
   useEffect(() => {
     if (selectedResult && activeTab === 'results') {
@@ -120,13 +176,15 @@ const StudentDashboard = () => {
   // Use refs to store latest values for the timer
   const selectedExamRef = useRef(selectedExam);
   const answersRef = useRef(answers);
+  const questionsRef = useRef(questions);
   const tokenRef = useRef(token);
 
   useEffect(() => {
     selectedExamRef.current = selectedExam;
     answersRef.current = answers;
+    questionsRef.current = questions;
     tokenRef.current = token;
-  }, [selectedExam, answers, token]);
+  }, [selectedExam, answers, questions, token]);
 
   // Timer effect
   useEffect(() => {
@@ -143,53 +201,53 @@ const StudentDashboard = () => {
         setTimeRemaining(0);
         // Auto-submit when time runs out
         const currentAnswers = answersRef.current;
-        if (Object.keys(currentAnswers).length > 0) {
-          const currentExam = selectedExamRef.current;
-          const currentToken = tokenRef.current;
-          
-          if (!currentExam) {
-            clearInterval(interval);
-            return;
-          }
+        const currentQuestions = questionsRef.current;
+        const currentExam = selectedExamRef.current;
+        const currentToken = tokenRef.current;
+        
+        if (!currentExam || !currentQuestions || currentQuestions.length === 0) {
+          clearInterval(interval);
+          return;
+        }
 
-          const payloadAnswers = Object.entries(currentAnswers).map(([question_id, selected_option]) => ({
-            question_id,
-            selected_option,
-          }));
+        // Include all questions in the payload, with unanswered ones having null selected_option
+        const payloadAnswers = currentQuestions.map((q) => ({
+          question_id: q._id,
+          selected_option: currentAnswers[q._id] || null,
+        }));
 
-          try {
-            const res = await fetch(`${API_BASE}/api/exams/${currentExam._id}/submit`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${currentToken}`,
-              },
-              body: JSON.stringify({ answers: payloadAnswers }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-              throw new Error(data?.message || 'Failed to submit exam');
-            }
-            setResult(data);
-            setTimeRemaining(null);
-            // Refresh exams and results after submission
-            const examsRes = await fetch(`${API_BASE}/api/exams/available`, {
-              headers: { Authorization: `Bearer ${currentToken}` },
-            });
-            if (examsRes.ok) {
-              const examsData = await examsRes.json();
-              setExams(examsData);
-            }
-            const resultsRes = await fetch(`${API_BASE}/api/results/student/me`, {
-              headers: { Authorization: `Bearer ${currentToken}` },
-            });
-            if (resultsRes.ok) {
-              const resultsData = await resultsRes.json();
-              setMyResults(resultsData);
-            }
-          } catch (err) {
-            setError(err.message);
+        try {
+          const res = await fetch(`${API_BASE}/api/exams/${currentExam._id}/submit`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${currentToken}`,
+            },
+            body: JSON.stringify({ answers: payloadAnswers }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data?.message || 'Failed to submit exam');
           }
+          setResult(data);
+          setTimeRemaining(null);
+          // Refresh exams and results after submission
+          const examsRes = await fetch(`${API_BASE}/api/exams/available`, {
+            headers: { Authorization: `Bearer ${currentToken}` },
+          });
+          if (examsRes.ok) {
+            const examsData = await examsRes.json();
+            setExams(examsData);
+          }
+          const resultsRes = await fetch(`${API_BASE}/api/results/student/me`, {
+            headers: { Authorization: `Bearer ${currentToken}` },
+          });
+          if (resultsRes.ok) {
+            const resultsData = await resultsRes.json();
+            setMyResults(resultsData);
+          }
+        } catch (err) {
+          setError(err.message);
         }
         clearInterval(interval);
       } else {
@@ -203,19 +261,10 @@ const StudentDashboard = () => {
   const submitExam = async () => {
     if (!selectedExam) return;
     
-    // Validate that all questions are answered
-    const answeredCount = Object.keys(answers).length;
-    const totalQuestions = questions.length;
-    
-    if (answeredCount < totalQuestions) {
-      const unansweredCount = totalQuestions - answeredCount;
-      setError(`You have ${unansweredCount} unanswered question${unansweredCount > 1 ? 's' : ''}. Please complete all questions before submitting.`);
-      return;
-    }
-    
-    const payloadAnswers = Object.entries(answers).map(([question_id, selected_option]) => ({
-      question_id,
-      selected_option,
+    // Include all questions in the payload, with unanswered ones having null selected_option
+    const payloadAnswers = questions.map((q) => ({
+      question_id: q._id,
+      selected_option: answers[q._id] || null,
     }));
 
     setError('');
@@ -371,6 +420,15 @@ const StudentDashboard = () => {
               <i className="bi bi-clipboard-check me-2"></i>My Results
             </button>
           </li>
+          <li className="nav-item" role="presentation">
+            <button
+              className={`nav-link ${activeTab === 'feedback' ? 'active' : ''}`}
+              onClick={() => setActiveTab('feedback')}
+              type="button"
+            >
+              <i className="bi bi-chat-left-text me-2"></i>Feedback
+            </button>
+          </li>
         </ul>
       )}
 
@@ -465,7 +523,7 @@ const StudentDashboard = () => {
                   className={`btn ${answeredCount === 0 ? 'btn-secondary' : answeredCount < questions.length ? 'btn-warning' : 'btn-success'}`}
                   onClick={submitExam}
                   disabled={answeredCount === 0}
-                  title={answeredCount < questions.length ? `You have ${questions.length - answeredCount} unanswered question${questions.length - answeredCount > 1 ? 's' : ''}` : 'Submit your exam'}
+                  title={answeredCount < questions.length ? `You have ${questions.length - answeredCount} unanswered question${questions.length - answeredCount > 1 ? 's' : ''}. Unanswered questions will be marked as 0.` : 'Submit your exam'}
                 >
                   <i className="bi bi-check-circle me-2"></i>
                   Submit Exam {answeredCount < questions.length && `(${answeredCount}/${questions.length})`}
@@ -632,24 +690,39 @@ const StudentDashboard = () => {
                       </div>
                       <div className="card-body">
                         <div className="result-details-header">
-                          <div className="row">
-                            <div className="col-md-6 mb-2">
-                              <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {resultDetails.attempt.total_score} / {resultDetails.answers.length}
-                            </div>
-                            <div className="col-md-6 mb-2">
-                              <strong><i className="bi bi-percent me-2"></i>Percentage:</strong>{' '}
-                              {Math.round((resultDetails.attempt.total_score / resultDetails.answers.length) * 100)}%
-                            </div>
-                            <div className="col-md-6 mb-2">
-                              <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
-                              <span className="status-badge status-completed">
-                                <i className="bi bi-check-circle me-1"></i>Completed
-                              </span>
-                            </div>
-                            <div className="col-md-6 mb-2">
-                              <strong><i className="bi bi-calendar-check me-2"></i>Submitted:</strong> {new Date(resultDetails.attempt.end_time).toLocaleString('en-GB')}
-                            </div>
-                          </div>
+                          {(() => {
+                            const percentage = resultDetails.answers.length > 0 
+                              ? (resultDetails.attempt.total_score / resultDetails.answers.length) * 100 
+                              : 0;
+                            const isPassed = percentage >= 40;
+                            return (
+                              <div>
+                                <div className="mb-2">
+                                  <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {resultDetails.attempt.total_score} / {resultDetails.answers.length}
+                                </div>
+                                <div className="mb-2">
+                                  <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
+                                  <span className="status-badge status-completed">
+                                    <i className="bi bi-check-circle me-1"></i>Completed
+                                  </span>
+                                </div>
+                                <div className="mb-2">
+                                  <strong><i className="bi bi-award me-2"></i>Result:</strong>{' '}
+                                  <span className={`status-badge ${isPassed ? 'status-completed' : 'status-failed'}`}>
+                                    <i className={`bi ${isPassed ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                                    {isPassed ? 'Passed' : 'Failed'}
+                                  </span>
+                                </div>
+                                <div className="mb-2">
+                                  <strong><i className="bi bi-percent me-2"></i>Percentage:</strong>{' '}
+                                  {Math.round(percentage)}%
+                                </div>
+                                <div className="mb-2">
+                                  <strong><i className="bi bi-calendar-check me-2"></i>Submitted:</strong> {new Date(resultDetails.attempt.end_time).toLocaleString('en-GB')}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <h4 className="mt-4 mb-3">
@@ -769,6 +842,106 @@ const StudentDashboard = () => {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Tab */}
+      {!selectedExam && activeTab === 'feedback' && (
+        <div>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="mb-0">
+                <i className="bi bi-chat-left-text me-2"></i>Feedback
+              </h3>
+            </div>
+            <div className="card-body">
+              <div className="mb-4">
+                <h5 className="mb-3">Send Feedback</h5>
+                {feedbackSuccess && (
+                  <div className="alert alert-success alert-dismissible fade show" role="alert">
+                    <i className="bi bi-check-circle-fill me-2"></i>
+                    {feedbackSuccess}
+                    <button type="button" className="btn-close" onClick={() => setFeedbackSuccess('')} aria-label="Close"></button>
+                  </div>
+                )}
+                <form onSubmit={submitFeedback}>
+                  <div className="mb-3">
+                    <label htmlFor="feedbackMessage" className="form-label">Your Message</label>
+                    <textarea
+                      id="feedbackMessage"
+                      className="form-control"
+                      rows="5"
+                      value={feedbackMessage}
+                      onChange={(e) => setFeedbackMessage(e.target.value)}
+                      placeholder="Enter your feedback or question here..."
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={feedbackSubmitting}
+                  >
+                    {feedbackSubmitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-send me-2"></i>Submit
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              <hr />
+
+              <div>
+                <h5 className="mb-3">My Feedback History</h5>
+                {myFeedback.length === 0 ? (
+                  <div className="empty-container">
+                    <i className="bi bi-inbox"></i>
+                    <p>No feedback submitted yet.</p>
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-3">
+                    {myFeedback.map((feedback) => (
+                      <div key={feedback._id} className="card">
+                        <div className="card-body">
+                          <div className="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                              <strong>Status:</strong>{' '}
+                              <span className={`badge ${feedback.status === 'Replied' ? 'bg-success' : 'bg-warning'}`}>
+                                {feedback.status}
+                              </span>
+                            </div>
+                            <small className="text-muted">
+                              {new Date(feedback.createdAt).toLocaleString('en-GB')}
+                            </small>
+                          </div>
+                          <div className="mb-3">
+                            <strong>Your Message:</strong>
+                            <p className="mb-0 mt-1">{feedback.message}</p>
+                          </div>
+                          {feedback.reply && (
+                            <div className="border-start border-3 border-success ps-3 mt-3">
+                              <strong className="text-success">Admin Reply:</strong>
+                              <p className="mb-0 mt-1">{feedback.reply}</p>
+                              <small className="text-muted">
+                                Replied on: {new Date(feedback.updatedAt).toLocaleString('en-GB')}
+                              </small>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

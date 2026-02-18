@@ -205,8 +205,8 @@ const submitExam = async (req, res) => {
   const { id } = req.params;
   const { answers } = req.body;
 
-  if (!Array.isArray(answers) || answers.length === 0) {
-    return res.status(400).json({ message: 'Answers are required' });
+  if (!Array.isArray(answers)) {
+    return res.status(400).json({ message: 'Answers must be an array' });
   }
 
   try {
@@ -223,25 +223,41 @@ const submitExam = async (req, res) => {
       return res.status(400).json({ message: 'Exam already submitted' });
     }
 
-    const questionIds = answers.map((a) => a.question_id);
-    const questions = await Question.find({ _id: { $in: questionIds }, exam_id: id });
+    // Get ALL questions for the exam, not just the ones in answers
+    const allQuestions = await Question.find({ exam_id: id });
+    
+    if (allQuestions.length === 0) {
+      return res.status(400).json({ message: 'No questions found for this exam' });
+    }
+
+    // Create a map of answers by question_id for quick lookup
+    const answerMap = new Map();
+    answers.forEach((ans) => {
+      answerMap.set(String(ans.question_id), ans.selected_option);
+    });
+
+    // Create a map of questions by question_id
     const questionMap = new Map();
-    questions.forEach((q) => {
+    allQuestions.forEach((q) => {
       questionMap.set(String(q._id), q);
     });
 
     let score = 0;
     const answerDocs = [];
 
-    answers.forEach((ans) => {
-      const q = questionMap.get(String(ans.question_id));
-      if (!q) return;
-      const isCorrect = q.correct_option === ans.selected_option;
+    // Process ALL questions, including unanswered ones
+    allQuestions.forEach((q) => {
+      const selectedOption = answerMap.get(String(q._id));
+      // Convert selectedOption to number if it exists, handle null/undefined
+      const selectedOptionNum = selectedOption != null ? Number(selectedOption) : null;
+      // If no answer provided or selected_option is null/undefined, treat as incorrect (0 marks)
+      const isCorrect = selectedOptionNum != null && q.correct_option === selectedOptionNum;
       if (isCorrect) score += 1;
+      
       answerDocs.push({
         attempt_id: attempt._id,
         question_id: q._id,
-        selected_option: ans.selected_option,
+        selected_option: selectedOptionNum,
         is_correct: isCorrect,
       });
     });
@@ -258,9 +274,10 @@ const submitExam = async (req, res) => {
     return res.json({
       message: 'Exam submitted',
       total_score: score,
-      total_questions: questions.length,
+      total_questions: allQuestions.length,
     });
   } catch (error) {
+    console.error('Error submitting exam:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };

@@ -27,27 +27,7 @@
   margin-bottom: 2rem;
 }
 
-.exam-manager-tabs .nav-link {
-  color: var(--secondary-color);
-  font-weight: 500;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-bottom: 3px solid transparent;
-  transition: all 0.15s ease-in-out;
-  margin-right: 0.5rem;
-}
-
-.exam-manager-tabs .nav-link:hover {
-  color: var(--success-color);
-  border-bottom-color: rgba(40, 167, 69, 0.3);
-}
-
-.exam-manager-tabs .nav-link.active {
-  color: var(--success-color);
-  background-color: transparent;
-  border-bottom-color: var(--success-color);
-  font-weight: 600;
-}
+/* Tab Navigation - Styles are now in global.css */
 
 /* Exam Form Card */
 .exam-form-card {
@@ -70,10 +50,16 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
+  padding: 0.5rem 0.875rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Table cell alignment for Status column */
+.table td:nth-last-child(2) {
+  vertical-align: middle;
 }
 
 .exam-status-scheduled {
@@ -211,6 +197,52 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.5rem 0;
+}
+
+.table-actions .btn {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease-in-out;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.table-actions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-actions .btn i {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* Table cell alignment and padding */
+.exam-manager-dashboard .table td {
+  vertical-align: middle;
+  padding: 0.75rem 0.5rem;
+}
+
+.exam-manager-dashboard .table th {
+  padding: 0.75rem 0.5rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+/* Table cell alignment for Actions column */
+.exam-manager-dashboard .table td:last-child {
+  padding: 0.75rem;
+  white-space: nowrap;
 }
 
 /* Score Display */
@@ -237,10 +269,7 @@
     padding: 1rem 0.5rem;
   }
   
-  .exam-manager-tabs .nav-link {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-  }
+  /* Tab responsive styles are now in global.css */
   
   .exam-stats-grid {
     grid-template-columns: repeat(2, 1fr);
