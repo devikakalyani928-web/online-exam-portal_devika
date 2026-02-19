@@ -713,7 +713,16 @@ const AdminDashboard = () => {
                           <td>{new Date(result.start_time).toLocaleString('en-GB')}</td>
                           <td>{result.end_time ? new Date(result.end_time).toLocaleString('en-GB') : 'N/A'}</td>
                           <td>
-                            <strong className={`score-display ${result.completed ? (result.total_score >= 50 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                            <strong className={`score-display ${(() => {
+                              if (!result.completed) return 'score-pending';
+                              // Use stored is_passed if available
+                              if (result.is_passed !== undefined) {
+                                return result.is_passed ? 'score-pass' : 'score-fail';
+                              }
+                              // Fallback: we don't have total questions here, so we can't calculate percentage
+                              // This should not happen for new records, but for old records, default to fail
+                              return 'score-fail';
+                            })()}`}>
                               {result.completed ? `${result.total_score}` : '-'}
                             </strong>
                           </td>

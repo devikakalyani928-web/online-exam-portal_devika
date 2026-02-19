@@ -282,9 +282,14 @@ const submitExam = async (req, res) => {
       await StudentAnswer.insertMany(answerDocs);
     }
 
+    // Calculate pass/fail: percentage >= 40
+    const percentage = (score / allQuestions.length) * 100;
+    const isPassed = percentage >= 40;
+
     attempt.total_score = score;
     attempt.completed = true;
     attempt.end_time = new Date();
+    attempt.is_passed = isPassed;
     await attempt.save();
 
     return res.json({

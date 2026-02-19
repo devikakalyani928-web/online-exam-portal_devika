@@ -457,7 +457,16 @@ const ResultManagerDashboard = () => {
                             <td>{r.student_id?.full_name || r.student_id?.username || 'N/A'}</td>
                             <td>{r.student_id?.email || 'N/A'}</td>
                             <td>
-                              <strong className={`score-display ${r.completed ? (r.total_score >= 50 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                              <strong className={`score-display ${(() => {
+                                if (!r.completed) return 'score-pending';
+                                // Use stored is_passed if available
+                                if (r.is_passed !== undefined) {
+                                  return r.is_passed ? 'score-pass' : 'score-fail';
+                                }
+                                // Fallback: we don't have total questions here, so we can't calculate percentage
+                                // This should not happen for new records, but for old records, default to fail
+                                return 'score-fail';
+                              })()}`}>
                                 {r.completed ? r.total_score : '-'}
                               </strong>
                             </td>
@@ -737,7 +746,14 @@ const ResultManagerDashboard = () => {
                                   <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
                                   <td>{attempt.student_id?.email}</td>
                                   <td>
-                                    <strong className={`score-display ${attempt.completed ? (attempt.total_score >= examReport.questions.total / 2 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                                    <strong className={`score-display ${(() => {
+                                      if (!attempt.completed) return 'score-pending';
+                                      // Always calculate based on percentage >= 40 for consistency with report statistics
+                                      const percentage = examReport.questions.total > 0 
+                                        ? (attempt.total_score / examReport.questions.total) * 100 
+                                        : 0;
+                                      return percentage >= 40 ? 'score-pass' : 'score-fail';
+                                    })()}`}>
                                       {attempt.completed ? `${attempt.total_score} / ${examReport.questions.total}` : '-'}
                                     </strong>
                                   </td>

@@ -30,16 +30,23 @@ const cleanupOrphanedAnswers = async () => {
     // Recalculate scores for affected completed attempts
     const affectedAttempts = [];
     for (const attemptId of attemptIds) {
-      const attempt = await ExamAttempt.findById(attemptId);
-      if (attempt && attempt.completed) {
+      const attempt = await ExamAttempt.findById(attemptId).populate('exam_id');
+      if (attempt && attempt.completed && attempt.exam_id) {
         // Recalculate score based on remaining valid answers
         const remainingAnswers = await StudentAnswer.find({ 
           attempt_id: attemptId,
           is_correct: true 
         });
         const newScore = remainingAnswers.length;
-        if (attempt.total_score !== newScore) {
+        
+        // Get total questions for the exam to calculate percentage
+        const totalQuestions = await Question.countDocuments({ exam_id: attempt.exam_id._id });
+        
+        if (attempt.total_score !== newScore || totalQuestions > 0) {
           attempt.total_score = newScore;
+          // Recalculate is_passed: percentage >= 40
+          const percentage = totalQuestions > 0 ? (newScore / totalQuestions) * 100 : 0;
+          attempt.is_passed = percentage >= 40;
           await attempt.save();
           affectedAttempts.push(attemptId);
         }
@@ -363,9 +370,24 @@ const getExamReport = async (req, res) => {
       stats.averageScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
       stats.highestScore = Math.max(...scores);
       stats.lowestScore = Math.min(...scores);
-      const passThreshold = totalQuestions / 2;
-      stats.passCount = scores.filter((s) => s >= passThreshold).length;
-      stats.failCount = scores.filter((s) => s < passThreshold).length;
+      // Always recalculate pass/fail based on percentage >= 40 for consistency
+      // This ensures old records with incorrect is_passed values are handled correctly
+      stats.passCount = completedAttempts.filter((a) => {
+        const percentage = totalQuestions > 0 ? (a.total_score / totalQuestions) * 100 : 0;
+        return percentage >= 40;
+      }).length;
+      stats.failCount = completedAttempts.length - stats.passCount;
+      
+      // Update is_passed for all attempts to ensure consistency (background update)
+      // This fixes old records that might have incorrect is_passed values
+      completedAttempts.forEach(async (a) => {
+        const percentage = totalQuestions > 0 ? (a.total_score / totalQuestions) * 100 : 0;
+        const shouldPass = percentage >= 40;
+        if (a.is_passed !== shouldPass) {
+          a.is_passed = shouldPass;
+          await a.save();
+        }
+      });
     }
 
     return res.json({

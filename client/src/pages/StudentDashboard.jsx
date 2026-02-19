@@ -570,7 +570,12 @@ const StudentDashboard = () => {
           </h3>
           <div className="score-display-large">
             Your Score: {result.total_score} / {result.total_questions}
-            <span className={`score-percentage ${result.total_score >= result.total_questions / 2 ? 'pass' : 'fail'}`}>
+            <span className={`score-percentage ${(() => {
+              const percentage = result.total_questions > 0 ? (result.total_score / result.total_questions) * 100 : 0;
+              // Use stored is_passed if available, otherwise calculate with percentage >= 40
+              const isPassed = result.is_passed !== undefined ? result.is_passed : percentage >= 40;
+              return isPassed ? 'pass' : 'fail';
+            })()}`}>
               ({Math.round((result.total_score / result.total_questions) * 100)}%)
             </span>
           </div>
@@ -821,7 +826,10 @@ const StudentDashboard = () => {
                             const percentage = att.completed && totalQuestions > 0 && att.total_score !== undefined
                               ? Math.round((att.total_score / totalQuestions) * 100)
                               : null;
-                            const isPassing = percentage !== null && percentage >= 50;
+                            // Use stored is_passed if available, otherwise calculate with percentage >= 40
+                            const isPassing = att.is_passed !== undefined 
+                              ? att.is_passed 
+                              : (percentage !== null && percentage >= 40);
 
                             return (
                               <tr key={att._id}>

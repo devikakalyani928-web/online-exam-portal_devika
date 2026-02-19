@@ -984,7 +984,18 @@ const ExamManagerDashboard = () => {
                                         <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
                                         <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
                                         <td>
-                                          <strong className={`score-display ${attempt.completed ? (attempt.total_score >= examDetails.questionsCount / 2 ? 'score-pass' : 'score-fail') : 'score-pending'}`}>
+                                          <strong className={`score-display ${(() => {
+                                            if (!attempt.completed) return 'score-pending';
+                                            // Use stored is_passed if available, otherwise calculate with percentage >= 40
+                                            if (attempt.is_passed !== undefined) {
+                                              return attempt.is_passed ? 'score-pass' : 'score-fail';
+                                            }
+                                            // Fallback: calculate percentage
+                                            const percentage = examDetails.questionsCount > 0 
+                                              ? (attempt.total_score / examDetails.questionsCount) * 100 
+                                              : 0;
+                                            return percentage >= 40 ? 'score-pass' : 'score-fail';
+                                          })()}`}>
                                             {attempt.completed ? `${attempt.total_score} / ${examDetails.questionsCount}` : '-'}
                                           </strong>
                                         </td>

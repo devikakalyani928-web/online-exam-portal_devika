@@ -8,6 +8,7 @@ const examAttemptSchema = new mongoose.Schema(
     end_time: { type: Date },
     total_score: { type: Number, default: 0 },
     completed: { type: Boolean, default: false },
+    is_passed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
