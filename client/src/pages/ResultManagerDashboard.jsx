@@ -199,7 +199,6 @@ const ResultManagerDashboard = () => {
     <div className="result-manager-dashboard">
       <div className="dashboard-header">
         <h2><i className="bi bi-clipboard-data"></i> Result Manager Dashboard</h2>
-        <p className="text-muted">View, verify, and generate result summaries and reports (Read-only access)</p>
       </div>
 
       {error && (

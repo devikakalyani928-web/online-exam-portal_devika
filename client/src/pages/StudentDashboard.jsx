@@ -192,6 +192,19 @@ const StudentDashboard = () => {
 
     const interval = setInterval(async () => {
       const now = new Date();
+      const examEndTime = new Date(selectedExam.end_time);
+      
+      // Check if exam has ended - if so, don't auto-submit, just show message and reset
+      if (now > examEndTime) {
+        setError('This exam has already ended. You can no longer attempt this exam.');
+        setTimeRemaining(null);
+        setSelectedExam(null);
+        setQuestions([]);
+        setAnswers({});
+        clearInterval(interval);
+        return;
+      }
+
       const elapsed = Math.floor((now - examStartTime) / 1000); // seconds
       const durationMinutes = selectedExam.duration;
       const totalSeconds = durationMinutes * 60;
@@ -261,6 +274,14 @@ const StudentDashboard = () => {
   const submitExam = async () => {
     if (!selectedExam) return;
     
+    // Check if exam has ended before submitting
+    const now = new Date();
+    const examEndTime = new Date(selectedExam.end_time);
+    if (now > examEndTime) {
+      setError('This exam has already ended. You can no longer attempt this exam.');
+      return;
+    }
+    
     // Include all questions in the payload, with unanswered ones having null selected_option
     const payloadAnswers = questions.map((q) => ({
       question_id: q._id,
@@ -307,6 +328,14 @@ const StudentDashboard = () => {
     // Strict retake prevention: Block only if exam is completed
     if (exam.attemptCompleted) {
       setError('You have already completed this exam. You cannot retake it.');
+      return;
+    }
+
+    // Check if exam has ended for NEW attempts
+    const now = new Date();
+    const examEndTime = new Date(exam.end_time);
+    if (!exam.attempted && now > examEndTime) {
+      setError('This exam has already ended. You can no longer attempt this exam.');
       return;
     }
 
@@ -388,7 +417,6 @@ const StudentDashboard = () => {
     <div className="student-dashboard">
       <div className="dashboard-header">
         <h2><i className="bi bi-mortarboard"></i> Student Dashboard</h2>
-        <p className="text-muted">Take exams and view your results</p>
       </div>
 
       {error && (

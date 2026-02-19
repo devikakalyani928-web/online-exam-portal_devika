@@ -365,7 +365,6 @@ const AdminDashboard = () => {
     <div className="admin-dashboard">
       <div className="dashboard-header">
         <h2><i className="bi bi-shield-check"></i> System Admin Dashboard</h2>
-        <p className="text-muted">Complete control over the Online Exam Portal</p>
       </div>
 
       {error && (

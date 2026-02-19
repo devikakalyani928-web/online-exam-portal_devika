@@ -146,25 +146,25 @@ const ExamManagerDashboard = () => {
   const validateExamForm = (formData, isEdit = false) => {
     const errors = {};
     
-    // Validate exam name (same validation as username: only letters, underscore, and full stop)
+    // Validate exam name (only required check, no character restrictions)
     if (!formData.exam_name || formData.exam_name.trim() === '') {
       errors.exam_name = 'Exam name is required.';
-    } else {
-      const examNameRegex = /^[a-zA-Z._]+$/;
-      if (!examNameRegex.test(formData.exam_name)) {
-        errors.exam_name = 'Exam name can only contain letters, underscore (_), and full stop (.). No spaces, digits, or other characters allowed.';
-      }
     }
     
     // Validate start time
     if (!formData.start_time) {
       errors.start_time = 'Start time is required.';
     } else if (!isEdit) {
-      // Only validate start time is not in the past for new exams
+      // For new exams: allow today or any future date (ignore time)
       const startDate = new Date(formData.start_time);
-      const now = new Date();
-      if (startDate < now) {
-        errors.start_time = 'Start time cannot be in the past.';
+      const today = new Date();
+      // Set time to 00:00:00 for date-only comparison
+      today.setHours(0, 0, 0, 0);
+      const startDateOnly = new Date(startDate);
+      startDateOnly.setHours(0, 0, 0, 0);
+      // Only block if the date is before today (not today or future)
+      if (startDateOnly < today) {
+        errors.start_time = 'Start date cannot be before today.';
       }
     }
     
@@ -451,7 +451,6 @@ const ExamManagerDashboard = () => {
     <div className="exam-manager-dashboard">
       <div className="dashboard-header">
         <h2><i className="bi bi-file-earmark-text"></i> Exam Manager Dashboard</h2>
-        <p className="text-muted">Create, schedule, activate/deactivate, and monitor exams</p>
       </div>
 
       {error && (
@@ -603,7 +602,7 @@ const ExamManagerDashboard = () => {
                     className={`form-control ${editFormErrors.exam_name ? 'is-invalid' : ''}`}
                     id="edit_exam_name"
                     name="exam_name"
-                    placeholder="e.g., Mathematics_Final_Exam (letters, _, . only)"
+                    placeholder="e.g., Mathematics Final Exam"
                     value={editForm.exam_name}
                     onChange={handleEditChange}
                     required
@@ -715,7 +714,7 @@ const ExamManagerDashboard = () => {
                     className={`form-control ${formErrors.exam_name ? 'is-invalid' : ''}`}
                     id="exam_name"
                     name="exam_name"
-                    placeholder="e.g., Mathematics_Final_Exam (letters, _, . only)"
+                    placeholder="e.g., Mathematics Final Exam"
                     value={form.exam_name}
                     onChange={handleChange}
                     required

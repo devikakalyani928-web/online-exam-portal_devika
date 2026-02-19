@@ -30,56 +30,82 @@ const Home = () => {
   }
 
   return (
-    <div className="container" style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <div className="home-hero">
-        <i className="bi bi-mortarboard-fill" style={{ fontSize: '4rem', marginBottom: '1rem' }}></i>
-        <h1>Online Exam Portal</h1>
-        <p>Streamline your examination process with our automated online testing platform</p>
-        {!user && (
-          <div className="home-actions">
-            <Link to="/login" className="btn home-action-btn home-action-btn-primary">
+    <div className="home-page">
+      {/* Custom Navigation Bar */}
+      <nav className="home-navbar">
+        <div className="home-navbar-container">
+          <Link to="/" className="home-navbar-brand">
+            <i className="bi bi-mortarboard-fill"></i>
+            Online Exam Portal
+          </Link>
+          <div className="home-navbar-actions">
+            <Link to="/login" className="home-navbar-login-btn">
+              <i className="bi bi-box-arrow-in-right"></i>
+              Login
+            </Link>
+            <Link to="/register" className="home-navbar-register-btn">
+              <i className="bi bi-person-plus"></i>
+              Register
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <div className="home-hero-wrapper">
+        <div className="home-hero-card">
+          <div className="home-hero-icon">
+            <i className="bi bi-mortarboard-fill"></i>
+          </div>
+          <h1 className="home-hero-heading">Online Exam Portal</h1>
+          <p className="home-hero-subtitle">
+            Streamline your examination process with our automated online testing platform
+          </p>
+          <div className="home-hero-actions">
+            <Link to="/login" className="btn home-hero-btn-primary">
               <i className="bi bi-box-arrow-in-right"></i>
               Sign In
             </Link>
-            <Link to="/register" className="btn home-action-btn home-action-btn-outline">
+            <Link to="/register" className="btn home-hero-btn-outline">
               <i className="bi bi-person-plus"></i>
               Get Started
             </Link>
           </div>
-        )}
+        </div>
       </div>
 
-      {!user && (
-        <div className="row mt-5">
-          <div className="col-md-4 mb-4">
-            <div className="card h-100 text-center">
-              <div className="card-body">
-                <i className="bi bi-shield-check text-primary" style={{ fontSize: '2.5rem' }}></i>
-                <h5 className="card-title mt-3">Secure</h5>
-                <p className="card-text text-muted">Your data is protected with industry-standard security measures</p>
-              </div>
+      {/* Feature Cards */}
+      <div className="home-features-section">
+        <div className="home-features-container">
+          <div className="home-feature-card">
+            <div className="home-feature-icon-wrapper">
+              <i className="bi bi-shield-lock-fill"></i>
             </div>
+            <h3 className="home-feature-title">Secure</h3>
+            <p className="home-feature-description">
+              Your data is protected with industry-standard security measures
+            </p>
           </div>
-          <div className="col-md-4 mb-4">
-            <div className="card h-100 text-center">
-              <div className="card-body">
-                <i className="bi bi-lightning-charge text-warning" style={{ fontSize: '2.5rem' }}></i>
-                <h5 className="card-title mt-3">Fast</h5>
-                <p className="card-text text-muted">Instant evaluation and real-time results for quick feedback</p>
-              </div>
+          <div className="home-feature-card">
+            <div className="home-feature-icon-wrapper home-feature-icon-fast">
+              <i className="bi bi-lightning-fill"></i>
             </div>
+            <h3 className="home-feature-title">Fast</h3>
+            <p className="home-feature-description">
+              Instant evaluation and real-time results for quick feedback
+            </p>
           </div>
-          <div className="col-md-4 mb-4">
-            <div className="card h-100 text-center">
-              <div className="card-body">
-                <i className="bi bi-graph-up text-success" style={{ fontSize: '2.5rem' }}></i>
-                <h5 className="card-title mt-3">Efficient</h5>
-                <p className="card-text text-muted">Automated processes save time and reduce manual errors</p>
-              </div>
+          <div className="home-feature-card">
+            <div className="home-feature-icon-wrapper home-feature-icon-efficient">
+              <i className="bi bi-graph-up-arrow"></i>
             </div>
+            <h3 className="home-feature-title">Efficient</h3>
+            <p className="home-feature-description">
+              Automated processes save time and reduce manual errors
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -182,8 +182,11 @@ const startExam = async (req, res) => {
     }
 
     // For new attempts, check time window
-    if (now < new Date(exam.start_time) || now > new Date(exam.end_time)) {
-      return res.status(400).json({ message: 'Exam is not within the allowed time window' });
+    if (now < new Date(exam.start_time)) {
+      return res.status(400).json({ message: 'Exam has not started yet' });
+    }
+    if (now > new Date(exam.end_time)) {
+      return res.status(400).json({ message: 'This exam has already ended. You can no longer attempt this exam.' });
     }
 
     // Create new attempt
@@ -210,6 +213,19 @@ const submitExam = async (req, res) => {
   }
 
   try {
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+
+    const now = new Date();
+    const examEndTime = new Date(exam.end_time);
+    
+    // Check if exam has ended - prevent submission
+    if (now > examEndTime) {
+      return res.status(400).json({ message: 'This exam has already ended. You can no longer attempt this exam.' });
+    }
+
     const attempt = await ExamAttempt.findOne({
       exam_id: id,
       student_id: req.user._id,

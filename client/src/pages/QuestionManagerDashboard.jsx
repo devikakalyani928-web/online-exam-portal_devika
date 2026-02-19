@@ -305,7 +305,6 @@ const QuestionManagerDashboard = () => {
     <div className="question-manager-dashboard">
       <div className="dashboard-header">
         <h2><i className="bi bi-question-circle"></i> Question Manager Dashboard</h2>
-        <p className="text-muted">Create, maintain, and manage the question bank</p>
       </div>
 
       {error && (
