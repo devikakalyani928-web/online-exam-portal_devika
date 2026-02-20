@@ -10,6 +10,8 @@ const Layout = ({ children }) => {
   const isAdminPage = location.pathname === '/admin';
   const isExamManagerPage = location.pathname === '/exam-manager';
   const isQuestionManagerPage = location.pathname === '/question-manager';
+  const isResultManagerPage = location.pathname === '/result-manager';
+  const isStudentPage = location.pathname === '/student';
 
   const getRoleIcon = (role) => {
     switch (role) {
@@ -30,7 +32,7 @@ const Layout = ({ children }) => {
 
   return (
     <>
-      {!isHomePage && !isAuthPage && !isAdminPage && !isExamManagerPage && !isQuestionManagerPage && (
+      {!isHomePage && !isAuthPage && !isAdminPage && !isExamManagerPage && !isQuestionManagerPage && !isResultManagerPage && !isStudentPage && (
         <nav className="navbar navbar-expand-lg navbar-custom">
           <div className="container-fluid">
             <Link to="/" className="navbar-brand-custom">
@@ -96,9 +98,9 @@ const Layout = ({ children }) => {
           </div>
         </nav>
       )}
-      <main className={isHomePage || isAuthPage || isAdminPage || isExamManagerPage || isQuestionManagerPage ? "" : "main-content"}>
-        {!isHomePage && !isAuthPage && !isAdminPage && !isExamManagerPage && !isQuestionManagerPage && <div className="container-fluid">{children}</div>}
-        {(isHomePage || isAuthPage || isAdminPage || isExamManagerPage || isQuestionManagerPage) && children}
+      <main className={isHomePage || isAuthPage || isAdminPage || isExamManagerPage || isQuestionManagerPage || isResultManagerPage || isStudentPage ? "" : "main-content"}>
+        {!isHomePage && !isAuthPage && !isAdminPage && !isExamManagerPage && !isQuestionManagerPage && !isResultManagerPage && !isStudentPage && <div className="container-fluid">{children}</div>}
+        {(isHomePage || isAuthPage || isAdminPage || isExamManagerPage || isQuestionManagerPage || isResultManagerPage || isStudentPage) && children}
       </main>
     </>
   );
