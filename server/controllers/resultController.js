@@ -109,7 +109,7 @@ const getMyResults = async (req, res) => {
     const attempts = await ExamAttempt.find({ student_id: req.user._id })
       .populate({
         path: 'exam_id',
-        select: 'exam_name start_time end_time duration',
+        select: 'exam_name start_time end_time duration is_active createdAt',
         populate: {
           path: 'created_by',
           select: 'username full_name email'

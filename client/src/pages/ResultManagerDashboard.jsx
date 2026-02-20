@@ -4,9 +4,16 @@ import '../styles/ResultManagerDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
+const NAV_ITEMS = [
+  { key: 'allResults', icon: 'bi-list-check',        label: 'All Results' },
+  { key: 'statistics', icon: 'bi-graph-up',          label: 'Statistics' },
+  { key: 'reports',    icon: 'bi-file-earmark-text', label: 'Exam Reports' },
+];
+
 const ResultManagerDashboard = () => {
-  const { token } = useAuth();
+  const { token, user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('allResults');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [results, setResults] = useState([]);
   const [exams, setExams] = useState([]);
   const [students, setStudents] = useState([]);
@@ -196,55 +203,109 @@ const ResultManagerDashboard = () => {
   };
 
   return (
-    <div className="result-manager-dashboard">
-      <div className="dashboard-header">
-        <h2><i className="bi bi-clipboard-data"></i> Result Manager Dashboard</h2>
+    <div className="rm-dashboard">
+      {/* ── Background blobs ── */}
+      <div className="rm-bg-effects">
+        <div className="rm-blob rm-blob-1" />
+        <div className="rm-blob rm-blob-2" />
+        <div className="rm-blob rm-blob-3" />
       </div>
 
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+      {/* ── Sidebar ── */}
+      <aside className={`rm-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
+        <div className="rm-sidebar-header">
+          <div className="rm-sidebar-logo">
+            <i className="bi bi-clipboard-data-fill" />
+            <span className="rm-sidebar-logo-text">Result Manager</span>
+          </div>
+          {sidebarOpen && (
+            <button className="rm-sidebar-toggle" onClick={() => setSidebarOpen(false)}>
+              <i className="bi bi-chevron-left" />
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Tabs */}
-      <ul className="nav nav-tabs result-manager-tabs" role="tablist">
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'allResults' ? 'active' : ''}`}
-            onClick={() => setActiveTab('allResults')}
-            type="button"
-          >
-            <i className="bi bi-list-check me-2"></i>All Results
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'statistics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('statistics')}
-            type="button"
-          >
-            <i className="bi bi-graph-up me-2"></i>Statistics
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'reports' ? 'active' : ''}`}
-            onClick={() => setActiveTab('reports')}
-            type="button"
-          >
-            <i className="bi bi-file-earmark-text me-2"></i>Exam Reports
-          </button>
-        </li>
-      </ul>
+        <nav className="rm-sidebar-nav">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              className={`rm-sidebar-nav-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab(item.key);
+                if (window.innerWidth < 768) setSidebarOpen(false);
+              }}
+              title={!sidebarOpen ? item.label : undefined}
+            >
+              <i className={`bi ${item.icon}`} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
 
-      {/* All Results Tab */}
-      {activeTab === 'allResults' && (
-        <div>
-          <div className="filter-section">
-            <div className="filter-group">
+        <div className="rm-sidebar-footer">
+          <button
+            className="rm-sidebar-nav-item rm-sidebar-logout-btn"
+            onClick={logout}
+            title={!sidebarOpen ? 'Logout' : undefined}
+          >
+            <i className="bi bi-box-arrow-left" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile overlay ── */}
+      <div
+        className={`rm-sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* ── Main area ── */}
+      <div className={`rm-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+        {/* Top bar */}
+        <header className="rm-topbar">
+          {!sidebarOpen && (
+            <button className="rm-expand-btn" onClick={() => setSidebarOpen(true)}>
+              <i className="bi bi-chevron-right" />
+            </button>
+          )}
+          <button className="rm-mobile-menu-btn" onClick={() => setSidebarOpen(true)}>
+            <i className="bi bi-list" />
+          </button>
+          <div className="rm-topbar-title">
+            <h1>{NAV_ITEMS.find((n) => n.key === activeTab)?.label}</h1>
+          </div>
+          <div className="rm-topbar-actions">
+            <div className="rm-topbar-user-chip">
+              <div className="rm-topbar-avatar" title={user?.full_name || 'Result Manager'}>
+                {user?.full_name?.charAt(0)?.toUpperCase() || 'R'}
+              </div>
+              <div className="rm-topbar-user-info">
+                <span className="rm-topbar-username">{user?.full_name || 'Result Manager'}</span>
+                <span className="rm-topbar-role">{user?.role}</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="rm-content">
+          {/* Error alert */}
+          {error && (
+            <div className="rm-alert rm-alert-danger">
+              <i className="bi bi-exclamation-triangle-fill" />
+              <span>{error}</span>
+              <button onClick={() => setError('')}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+          )}
+
+          {/* ═══ ALL RESULTS TAB ═══ */}
+          {activeTab === 'allResults' && (
+            <div>
+              <div className="rm-filter-section">
+                <div className="rm-filter-group">
               <label htmlFor="filter-exam">
                 <i className="bi bi-funnel me-2"></i>Filter by Exam:
               </label>
@@ -289,31 +350,29 @@ const ResultManagerDashboard = () => {
               </select>
             </div>
             {selectedAttempt && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setSelectedAttempt(null);
-                  setAttemptDetails(null);
-                }}
-              >
-                <i className="bi bi-x-circle me-2"></i>Close Details
-              </button>
+                <button
+                  className="btn-rm-secondary"
+                  onClick={() => {
+                    setSelectedAttempt(null);
+                    setAttemptDetails(null);
+                  }}
+                >
+                  <i className="bi bi-x-circle" /> Close Details
+                </button>
             )}
           </div>
 
           {selectedAttempt && attemptDetails ? (
-            <div className="card attempt-details-card">
-              <div className="card-header">
+            <div className="rm-glass-card attempt-details-card">
+              <div className="rm-glass-card-header">
                 <h3 className="mb-0">
                   <i className="bi bi-eye me-2"></i>Detailed Attempt View
                 </h3>
               </div>
               <div className="card-body">
                 {detailsLoading ? (
-                  <div className="loading-container">
-                    <div className="spinner-border text-info" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
+                  <div className="rm-loading">
+                    <div className="rm-spinner" />
                   </div>
                 ) : (
                   <div>
@@ -417,26 +476,24 @@ const ResultManagerDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="card">
-              <div className="card-header">
+            <div className="rm-glass-card">
+              <div className="rm-glass-card-header">
                 <h3 className="mb-0">
                   <i className="bi bi-list-check me-2"></i>All Results ({results.length})
                 </h3>
               </div>
               <div className="card-body">
                 {loading ? (
-                  <div className="loading-container">
-                    <div className="spinner-border text-info" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
+                  <div className="rm-loading">
+                    <div className="rm-spinner" />
                   </div>
                 ) : results.length === 0 ? (
-                  <div className="empty-container">
+                  <div className="rm-empty">
                     <i className="bi bi-inbox"></i>
                     <p>No exam attempts found.</p>
                   </div>
                 ) : (
-                  <div className="table-responsive">
+                  <div className="rm-table-wrapper">
                     <table className="table table-hover">
                       <thead>
                         <tr>
@@ -480,7 +537,7 @@ const ResultManagerDashboard = () => {
                             <td>{r.end_time ? new Date(r.end_time).toLocaleString('en-GB') : '-'}</td>
                             <td>
                               <button
-                                className="btn btn-sm btn-info"
+                                className="btn-rm-info btn-rm-sm"
                                 onClick={() => setSelectedAttempt(r._id)}
                               >
                                 <i className="bi bi-eye me-1"></i>View Details
@@ -501,42 +558,40 @@ const ResultManagerDashboard = () => {
       {/* Statistics Tab */}
       {activeTab === 'statistics' && (
         <div>
-          <div className="card">
-            <div className="card-header">
+          <div className="rm-glass-card">
+            <div className="rm-glass-card-header">
               <h3 className="mb-0">
                 <i className="bi bi-graph-up-arrow me-2"></i>Result Statistics
               </h3>
             </div>
             <div className="card-body">
               {statsLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-info" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
+                <div className="rm-loading">
+                  <div className="rm-spinner" />
                 </div>
               ) : stats ? (
                 <div>
-                  <div className="stats-overview-grid">
-                    <div className="stat-overview-card">
-                      <div className="stat-overview-label">Total Attempts</div>
-                      <div className="stat-overview-value info">{stats.overview.totalAttempts}</div>
+                  <div className="rm-stats-grid">
+                    <div className="rm-stat-card">
+                      <div className="rm-stat-label">Total Attempts</div>
+                      <div className="rm-stat-value info">{stats.overview.totalAttempts}</div>
                     </div>
-                    <div className="stat-overview-card">
-                      <div className="stat-overview-label">Completed</div>
-                      <div className="stat-overview-value success">{stats.overview.completedAttempts}</div>
+                    <div className="rm-stat-card">
+                      <div className="rm-stat-label">Completed</div>
+                      <div className="rm-stat-value success">{stats.overview.completedAttempts}</div>
                     </div>
-                    <div className="stat-overview-card">
-                      <div className="stat-overview-label">Pending</div>
-                      <div className="stat-overview-value warning">{stats.overview.pendingAttempts}</div>
+                    <div className="rm-stat-card">
+                      <div className="rm-stat-label">Pending</div>
+                      <div className="rm-stat-value warning">{stats.overview.pendingAttempts}</div>
                     </div>
-                    <div className="stat-overview-card">
-                      <div className="stat-overview-label">Average Score</div>
-                      <div className="stat-overview-value purple">{stats.overview.averageScore}</div>
+                    <div className="rm-stat-card">
+                      <div className="rm-stat-label">Average Score</div>
+                      <div className="rm-stat-value purple">{stats.overview.averageScore}</div>
                     </div>
                   </div>
 
-                  <div className="card mb-4">
-                    <div className="card-header">
+                  <div className="rm-glass-card">
+                    <div className="rm-glass-card-header">
                       <h4 className="mb-0">
                         <i className="bi bi-list-ul me-2"></i>Statistics by Exam
                       </h4>
@@ -548,7 +603,7 @@ const ResultManagerDashboard = () => {
                           No exam statistics available.
                         </div>
                       ) : (
-                        <div className="table-responsive">
+                        <div className="rm-table-wrapper">
                           <table className="table table-hover">
                             <thead>
                               <tr>
@@ -576,42 +631,55 @@ const ResultManagerDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="card">
-                    <div className="card-header">
+                  <div className="rm-glass-card">
+                    <div className="rm-glass-card-header">
                       <h4 className="mb-0">
                         <i className="bi bi-trophy me-2"></i>Top 10 Students (by Average Score)
                       </h4>
                     </div>
                     <div className="card-body">
                       {stats.topStudents.length === 0 ? (
-                        <div className="alert alert-info">
-                          <i className="bi bi-info-circle me-2"></i>
-                          No student statistics available.
+                        <div className="rm-empty">
+                          <i className="bi bi-info-circle"></i>
+                          <p>No student statistics available.</p>
                         </div>
                       ) : (
-                        <div className="table-responsive">
-                          <table className="table table-hover top-students-table">
+                        <div className="rm-table-wrapper">
+                          <table className="table rm-top-students-table">
                             <thead>
                               <tr>
-                                <th>Rank</th>
-                                <th>Student</th>
-                                <th>Total Attempts</th>
-                                <th>Average Score</th>
+                                <th style={{ width: '80px' }}>RANK</th>
+                                <th>STUDENT</th>
+                                <th style={{ width: '120px', textAlign: 'right' }}>TOTAL ATTEMPTS</th>
+                                <th style={{ width: '140px', textAlign: 'right' }}>AVERAGE SCORE</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {stats.topStudents.map((student, idx) => (
-                                <tr key={idx}>
-                                  <td>
-                                    <span className="rank-badge">#{idx + 1}</span>
-                                  </td>
-                                  <td><strong>{student.studentName}</strong></td>
-                                  <td>{student.totalAttempts}</td>
-                                  <td>
-                                    <strong className="text-success" style={{ fontSize: '1.1rem' }}>{student.avgScore}</strong>
-                                  </td>
-                                </tr>
-                              ))}
+                              {stats.topStudents.map((student, idx) => {
+                                const nameMatch = student.studentName.match(/^(.+?)\s*\((.+?)\)$/);
+                                const studentName = nameMatch ? nameMatch[1] : student.studentName;
+                                const studentEmail = nameMatch ? nameMatch[2] : '';
+                                
+                                return (
+                                  <tr key={idx}>
+                                    <td>
+                                      <span className="rm-rank-badge">#{idx + 1}</span>
+                                    </td>
+                                    <td>
+                                      <div className="rm-student-info">
+                                        <strong className="rm-student-name">{studentName}</strong>
+                                        {studentEmail && (
+                                          <span className="rm-student-email">{studentEmail}</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>{student.totalAttempts}</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      <strong className="rm-score-value">{student.avgScore}</strong>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -633,9 +701,9 @@ const ResultManagerDashboard = () => {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <div>
-          <div className="card mb-3">
+          <div className="rm-glass-card">
             <div className="card-body">
-              <div className="filter-group">
+              <div className="rm-filter-group">
                 <label htmlFor="report-exam">
                   <i className="bi bi-file-earmark-text me-2"></i>Select Exam for Report:
                 </label>
@@ -660,10 +728,8 @@ const ResultManagerDashboard = () => {
           {selectedExamForReport && (
             <>
               {reportLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-info" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
+                <div className="rm-loading">
+                  <div className="rm-spinner" />
                 </div>
               ) : examReport ? (
                 <div>
@@ -716,19 +782,19 @@ const ResultManagerDashboard = () => {
                   </div>
 
                   <div className="card">
-                    <div className="card-header">
+                    <div className="rm-glass-card-header">
                       <h4 className="mb-0">
                         <i className="bi bi-list-check me-2"></i>All Attempts
                       </h4>
                     </div>
                     <div className="card-body">
                       {examReport.attempts.all.length === 0 ? (
-                        <div className="empty-container">
+                        <div className="rm-empty">
                           <i className="bi bi-inbox"></i>
                           <p>No attempts for this exam.</p>
                         </div>
                       ) : (
-                        <div className="table-responsive">
+                        <div className="rm-table-wrapper">
                           <table className="table table-hover">
                             <thead>
                               <tr>
@@ -788,6 +854,8 @@ const ResultManagerDashboard = () => {
           )}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

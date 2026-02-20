@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import '../styles/StudentDashboard.css';
+import '../styles/ExamManagerDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
@@ -755,227 +756,230 @@ const StudentDashboard = () => {
 
       {/* My Results Tab */}
       {!selectedExam && activeTab === 'results' && (
-        <div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-file-earmark-text-fill me-2" style={{ color: '#8b5cf6' }}></i>
+        <div className="em-dashboard">
+          <div className="em-glass-card">
+            <div className="em-glass-card-header">
+              <h3>
+                <i className="bi bi-file-earmark-text-fill" />
                 My Results ({myResults.length})
               </h3>
             </div>
-            <div className="card-body">
-              {selectedResult && resultDetails ? (
-                <div>
-                  <button
-                    className="btn btn-secondary mb-3"
-                    onClick={() => {
-                      setSelectedResult(null);
-                      setResultDetails(null);
-                    }}
-                  >
-                    <i className="bi bi-arrow-left me-2"></i>Back to Results List
-                  </button>
+            {selectedResult && resultDetails ? (
+              <div>
+                <button
+                  className="btn btn-secondary mb-3"
+                  onClick={() => {
+                    setSelectedResult(null);
+                    setResultDetails(null);
+                  }}
+                >
+                  <i className="bi bi-arrow-left me-2"></i>Back to Results List
+                </button>
 
-                  {detailsLoading ? (
-                    <div className="loading-container">
-                      <div className="spinner-border text-info" role="status">
-                        <span className="visually-hidden">Loading...</span>
+                {detailsLoading ? (
+                  <div className="loading-container">
+                    <div className="spinner-border text-info" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="card result-details-card">
+                    <div className="card-header">
+                      <h4 className="mb-0">{resultDetails.attempt.exam_id?.exam_name}</h4>
+                    </div>
+                    <div className="card-body">
+                      <div className="result-details-header">
+                        {(() => {
+                          const percentage = resultDetails.answers.length > 0 
+                            ? (resultDetails.attempt.total_score / resultDetails.answers.length) * 100 
+                            : 0;
+                          const isPassed = percentage >= 40;
+                          return (
+                            <div>
+                              <div className="mb-2">
+                                <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {resultDetails.attempt.total_score} / {resultDetails.answers.length}
+                              </div>
+                              <div className="mb-2">
+                                <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
+                                <span className="status-badge status-completed">
+                                  <i className="bi bi-check-circle me-1"></i>Completed
+                                </span>
+                              </div>
+                              <div className="mb-2">
+                                <strong><i className="bi bi-award me-2"></i>Result:</strong>{' '}
+                                <span className={`status-badge ${isPassed ? 'status-completed' : 'status-failed'}`}>
+                                  <i className={`bi ${isPassed ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                                  {isPassed ? 'Passed' : 'Failed'}
+                                </span>
+                              </div>
+                              <div className="mb-2">
+                                <strong><i className="bi bi-percent me-2"></i>Percentage:</strong>{' '}
+                                {Math.round(percentage)}%
+                              </div>
+                              <div className="mb-2">
+                                <strong><i className="bi bi-calendar-check me-2"></i>Submitted:</strong> {new Date(resultDetails.attempt.end_time).toLocaleString('en-GB')}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      <h4 className="mt-4 mb-3">
+                        <i className="bi bi-list-ul me-2"></i>Your Answers:
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {resultDetails.answers.map((answer, idx) => (
+                          <div
+                            key={answer._id}
+                            className={`answer-review-card ${answer.is_correct ? 'correct' : 'incorrect'}`}
+                          >
+                            <p className="fw-bold mb-2">
+                              Question {idx + 1}: {answer.question_id?.question_text}
+                            </p>
+                            <div className="answer-review-options">
+                              <p>1. {answer.question_id?.option1}</p>
+                              <p>2. {answer.question_id?.option2}</p>
+                              <p>3. {answer.question_id?.option3}</p>
+                              <p>4. {answer.question_id?.option4}</p>
+                            </div>
+                            <p className="answer-review-result mt-2">
+                              <strong>Your Answer:</strong> Option {answer.selected_option}
+                              {answer.is_correct ? (
+                                <span className="correct ms-2">
+                                  <i className="bi bi-check-circle-fill me-1"></i>Correct
+                                </span>
+                              ) : (
+                                <span className="incorrect ms-2">
+                                  <i className="bi bi-x-circle-fill me-1"></i>Incorrect (Correct: Option {answer.question_id?.correct_option})
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ) : (
-                    <div className="card result-details-card">
-                      <div className="card-header">
-                        <h4 className="mb-0">{resultDetails.attempt.exam_id?.exam_name}</h4>
-                      </div>
-                      <div className="card-body">
-                        <div className="result-details-header">
-                          {(() => {
-                            const percentage = resultDetails.answers.length > 0 
-                              ? (resultDetails.attempt.total_score / resultDetails.answers.length) * 100 
-                              : 0;
-                            const isPassed = percentage >= 40;
-                            return (
-                              <div>
-                                <div className="mb-2">
-                                  <strong><i className="bi bi-trophy me-2"></i>Score:</strong> {resultDetails.attempt.total_score} / {resultDetails.answers.length}
-                                </div>
-                                <div className="mb-2">
-                                  <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
-                                  <span className="status-badge status-completed">
-                                    <i className="bi bi-check-circle me-1"></i>Completed
-                                  </span>
-                                </div>
-                                <div className="mb-2">
-                                  <strong><i className="bi bi-award me-2"></i>Result:</strong>{' '}
-                                  <span className={`status-badge ${isPassed ? 'status-completed' : 'status-failed'}`}>
-                                    <i className={`bi ${isPassed ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
-                                    {isPassed ? 'Passed' : 'Failed'}
-                                  </span>
-                                </div>
-                                <div className="mb-2">
-                                  <strong><i className="bi bi-percent me-2"></i>Percentage:</strong>{' '}
-                                  {Math.round(percentage)}%
-                                </div>
-                                <div className="mb-2">
-                                  <strong><i className="bi bi-calendar-check me-2"></i>Submitted:</strong> {new Date(resultDetails.attempt.end_time).toLocaleString('en-GB')}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {myResults.length === 0 ? (
+                  <div className="em-empty">
+                    <i className="bi bi-inbox" />
+                    <p>No exam attempts yet. Start taking exams from the "Available Exams" tab!</p>
+                  </div>
+                ) : (
+                  <div className="em-table-wrapper">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>EXAM NAME</th>
+                          <th>CREATED BY</th>
+                          <th>START TIME</th>
+                          <th>END TIME</th>
+                          <th>DURATION (MIN)</th>
+                          <th>SCORE</th>
+                          <th>STATUS</th>
+                          <th>CREATED</th>
+                          <th>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {myResults.map((att) => {
+                          // Get total questions count from exam
+                          const totalQuestions = att.exam_id?.questionsCount || 0;
+                          const scoreDisplay = att.completed && att.total_score !== undefined 
+                            ? totalQuestions > 0 
+                              ? `${att.total_score} / ${totalQuestions}`
+                              : `${att.total_score}`
+                            : '-';
+                          const percentage = att.completed && totalQuestions > 0 && att.total_score !== undefined
+                            ? Math.round((att.total_score / totalQuestions) * 100)
+                            : null;
+                          // Use stored is_passed if available, otherwise calculate with percentage >= 40
+                          const isPassing = att.is_passed !== undefined 
+                            ? att.is_passed 
+                            : (percentage !== null && percentage >= 40);
+                          
+                          // Calculate duration in minutes
+                          const durationMinutes = att.exam_id?.duration || 0;
+                          
+                          // Format dates - use exam dates, not attempt dates
+                          const startTime = att.exam_id?.start_time ? new Date(att.exam_id.start_time).toLocaleString('en-GB') : '-';
+                          const endTime = att.exam_id?.end_time ? new Date(att.exam_id.end_time).toLocaleString('en-GB') : '-';
+                          const createdDate = att.exam_id?.createdAt ? new Date(att.exam_id.createdAt).toLocaleDateString('en-GB') : '-';
 
-                        <h4 className="mt-4 mb-3">
-                          <i className="bi bi-list-ul me-2"></i>Your Answers:
-                        </h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          {resultDetails.answers.map((answer, idx) => (
-                            <div
-                              key={answer._id}
-                              className={`answer-review-card ${answer.is_correct ? 'correct' : 'incorrect'}`}
-                            >
-                              <p className="fw-bold mb-2">
-                                Question {idx + 1}: {answer.question_id?.question_text}
-                              </p>
-                              <div className="answer-review-options">
-                                <p>1. {answer.question_id?.option1}</p>
-                                <p>2. {answer.question_id?.option2}</p>
-                                <p>3. {answer.question_id?.option3}</p>
-                                <p>4. {answer.question_id?.option4}</p>
-                              </div>
-                              <p className="answer-review-result mt-2">
-                                <strong>Your Answer:</strong> Option {answer.selected_option}
-                                {answer.is_correct ? (
-                                  <span className="correct ms-2">
-                                    <i className="bi bi-check-circle-fill me-1"></i>Correct
+                          return (
+                            <tr key={att._id}>
+                              <td><strong style={{ color: 'var(--text)' }}>{att.exam_id?.exam_name || 'N/A'}</strong></td>
+                              <td>
+                                {att.exam_id?.created_by ? (
+                                  <div>
+                                    <div>{att.exam_id.created_by.username || att.exam_id.created_by.full_name || 'N/A'}</div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                      {att.exam_id.created_by.email || ''}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  'N/A'
+                                )}
+                              </td>
+                              <td>{startTime}</td>
+                              <td>{endTime}</td>
+                              <td>{durationMinutes}</td>
+                              <td>
+                                {att.completed && scoreDisplay !== '-' ? (
+                                  <div>
+                                    <span className={`em-score ${isPassing ? 'pass' : 'fail'}`}>
+                                      {scoreDisplay}
+                                    </span>
+                                    {percentage !== null && (
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                                        ({percentage}%)
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)' }}>-</span>
+                                )}
+                              </td>
+                              <td>
+                                {att.completed ? (
+                                  <span className={`em-status-badge ${isPassing ? 'em-status-active' : 'em-status-ended'}`}>
+                                    <i className={`bi ${isPassing ? 'bi-check-circle' : 'bi-x-circle'}`} />
+                                    {isPassing ? 'Passed' : 'Failed'}
                                   </span>
                                 ) : (
-                                  <span className="incorrect ms-2">
-                                    <i className="bi bi-x-circle-fill me-1"></i>Incorrect (Correct: Option {answer.question_id?.correct_option})
+                                  <span className="em-status-badge em-status-scheduled">
+                                    <i className="bi bi-clock" />
+                                    In Progress
                                   </span>
                                 )}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {myResults.length === 0 ? (
-                    <div className="empty-container">
-                      <i className="bi bi-inbox"></i>
-                      <p>No exam attempts yet. Start taking exams from the "Available Exams" tab!</p>
-                    </div>
-                  ) : (
-                    <div className="table-responsive results-table-wrapper">
-                      <table className="table results-table">
-                        <thead>
-                          <tr>
-                            <th>EXAM NAME</th>
-                            <th>CREATED BY</th>
-                            <th>START TIME</th>
-                            <th>END TIME</th>
-                            <th>DURATION (MIN)</th>
-                            <th>STATUS</th>
-                            <th>CREATED</th>
-                            <th>ACTIONS</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {myResults.map((att) => {
-                            // Get total questions count from exam
-                            const totalQuestions = att.exam_id?.questionsCount || 0;
-                            const scoreDisplay = att.completed && att.total_score !== undefined 
-                              ? totalQuestions > 0 
-                                ? `${att.total_score} / ${totalQuestions}`
-                                : `${att.total_score}`
-                              : '-';
-                            const percentage = att.completed && totalQuestions > 0 && att.total_score !== undefined
-                              ? Math.round((att.total_score / totalQuestions) * 100)
-                              : null;
-                            // Use stored is_passed if available, otherwise calculate with percentage >= 40
-                            const isPassing = att.is_passed !== undefined 
-                              ? att.is_passed 
-                              : (percentage !== null && percentage >= 40);
-                            
-                            // Calculate duration in minutes
-                            const durationMinutes = att.exam_id?.duration || 0;
-                            
-                            // Format dates
-                            const startTime = att.start_time ? new Date(att.start_time).toLocaleString('en-GB') : '-';
-                            const endTime = att.end_time ? new Date(att.end_time).toLocaleString('en-GB') : '-';
-                            const createdDate = att.createdAt ? new Date(att.createdAt).toLocaleDateString('en-GB') : '-';
-
-                            return (
-                              <tr key={att._id}>
-                                <td>
-                                  <strong>{att.exam_id?.exam_name || 'N/A'}</strong>
-                                  {att.completed && (
-                                    <div className="mt-1">
-                                      <span className={`score-display ${isPassing ? 'score-pass' : 'score-fail'}`} style={{ fontSize: '0.875rem' }}>
-                                        {scoreDisplay}
-                                      </span>
-                                      {percentage !== null && (
-                                        <span className="text-muted ms-2" style={{ fontSize: '0.8rem' }}>
-                                          ({percentage}%)
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </td>
-                                <td>
-                                  {att.exam_id?.created_by ? (
-                                    <div>
-                                      <div>{att.exam_id.created_by.username || att.exam_id.created_by.full_name || 'N/A'}</div>
-                                      <div className="text-muted" style={{ fontSize: '0.85rem' }}>
-                                        {att.exam_id.created_by.email || ''}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    'N/A'
-                                  )}
-                                </td>
-                                <td>{startTime}</td>
-                                <td>{endTime}</td>
-                                <td>{durationMinutes}</td>
-                                <td>
-                                  {att.completed ? (
-                                    <span className={`status-pill ${isPassing ? 'status-pass' : 'status-fail'}`}>
-                                      <i className={`bi ${isPassing ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
-                                      {isPassing ? 'Passed' : 'Failed'}
-                                    </span>
-                                  ) : (
-                                    <span className="status-pill status-pending">
-                                      <i className="bi bi-clock me-1"></i>
-                                      In Progress
-                                    </span>
-                                  )}
-                                </td>
-                                <td>{createdDate}</td>
-                                <td>
+                              </td>
+                              <td>{createdDate}</td>
+                              <td>
+                                <div className="em-table-actions">
                                   {att.completed ? (
                                     <button
-                                      className="btn btn-sm btn-info"
+                                      className="btn-em-info btn-em-sm"
                                       onClick={() => setSelectedResult(att._id)}
                                     >
-                                      <i className="bi bi-eye me-1"></i>View
+                                      <i className="bi bi-eye" /> View
                                     </button>
                                   ) : (
-                                    <span className="text-muted" style={{ fontSize: '0.85rem' }}>-</span>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>-</span>
                                   )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
