@@ -100,6 +100,11 @@ const Register = () => {
 
   return (
     <div className="auth-page">
+      {/* Background blobs */}
+      <div className="auth-blob auth-blob-1"></div>
+      <div className="auth-blob auth-blob-2"></div>
+      <div className="auth-blob auth-blob-3"></div>
+
       <div className="auth-left">
         <div className="auth-illustration">
           <AuthIllustration />
@@ -107,8 +112,6 @@ const Register = () => {
       </div>
 
       <div className="auth-right">
-        <div className="auth-arc auth-arc--1"></div>
-        <div className="auth-arc auth-arc--2"></div>
 
         <div className="auth-card auth-card--register">
           <h1 className="auth-title">Hello!</h1>

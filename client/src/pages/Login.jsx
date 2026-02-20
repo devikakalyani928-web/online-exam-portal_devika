@@ -31,6 +31,11 @@ const Login = () => {
 
   return (
     <div className="auth-page">
+      {/* Background blobs */}
+      <div className="auth-blob auth-blob-1"></div>
+      <div className="auth-blob auth-blob-2"></div>
+      <div className="auth-blob auth-blob-3"></div>
+
       <div className="auth-left">
         <div className="auth-illustration">
           <AuthIllustration />
@@ -38,13 +43,10 @@ const Login = () => {
       </div>
 
       <div className="auth-right">
-        {/* Decorative arcs */}
-        <div className="auth-arc auth-arc--1"></div>
-        <div className="auth-arc auth-arc--2"></div>
 
         <div className="auth-card">
           <h1 className="auth-title">Hello!</h1>
-          <p className="auth-subtitle">Sign Up to Get Started</p>
+          <p className="auth-subtitle">Sign in to your account</p>
 
           {error && (
             <div className="auth-error">
