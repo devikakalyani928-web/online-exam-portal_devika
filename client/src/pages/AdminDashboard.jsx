@@ -4,10 +4,19 @@ import '../styles/AdminDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
+const NAV_ITEMS = [
+  { key: 'stats',    icon: 'bi-grid-1x2-fill',           label: 'Dashboard' },
+  { key: 'users',    icon: 'bi-people-fill',              label: 'Users' },
+  { key: 'exams',    icon: 'bi-file-earmark-text-fill',   label: 'Examinations' },
+  { key: 'results',  icon: 'bi-clipboard-data-fill',      label: 'Results' },
+  { key: 'feedback', icon: 'bi-chat-left-text-fill',      label: 'Feedback' },
+];
+
 const AdminDashboard = () => {
-  const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState('users');
-  
+  const { token, user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('stats');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   // Users state
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -21,29 +30,30 @@ const AdminDashboard = () => {
   const [editingUserId, setEditingUserId] = useState(null);
   const [userFormErrors, setUserFormErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Exams state
   const [exams, setExams] = useState([]);
   const [examsLoading, setExamsLoading] = useState(true);
-  
+
   // Results state
   const [results, setResults] = useState([]);
   const [resultsLoading, setResultsLoading] = useState(true);
-  
+
   // Stats state
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
-  
+
   // Feedback state
   const [feedback, setFeedback] = useState([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [replying, setReplying] = useState(false);
-  
+
   const [error, setError] = useState('');
 
-  // Fetch users
+  /* ───── Data fetchers ───── */
+
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
@@ -61,7 +71,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Fetch exams
   const fetchExams = async () => {
     try {
       setExamsLoading(true);
@@ -79,7 +88,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Fetch results
   const fetchResults = async () => {
     try {
       setResultsLoading(true);
@@ -88,9 +96,8 @@ const AdminDashboard = () => {
       });
       if (!res.ok) throw new Error('Failed to load results');
       const data = await res.json();
-      // Filter out any attempts with null student_id or exam_id (safety check)
-      const validResults = data.filter(result => 
-        result.student_id !== null && result.exam_id !== null
+      const validResults = data.filter(
+        (result) => result.student_id !== null && result.exam_id !== null
       );
       setResults(validResults);
       setError('');
@@ -101,7 +108,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Fetch stats
   const fetchStats = async () => {
     try {
       setStatsLoading(true);
@@ -119,7 +125,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Fetch feedback
   const fetchFeedback = async () => {
     try {
       setFeedbackLoading(true);
@@ -137,16 +142,13 @@ const AdminDashboard = () => {
     }
   };
 
-  // Reply to feedback
   const handleReply = async (feedbackId) => {
     if (!replyMessage.trim()) {
       setError('Please enter a reply message');
       return;
     }
-
     setReplying(true);
     setError('');
-
     try {
       const res = await fetch(`${API_BASE}/api/feedback/${feedbackId}/reply`, {
         method: 'POST',
@@ -156,12 +158,8 @@ const AdminDashboard = () => {
         },
         body: JSON.stringify({ reply: replyMessage }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.message || 'Failed to send reply');
-      }
-
+      if (!res.ok) throw new Error(data?.message || 'Failed to send reply');
       setReplyMessage('');
       setReplyingTo(null);
       fetchFeedback();
@@ -172,175 +170,130 @@ const AdminDashboard = () => {
     }
   };
 
-  // Load data based on active tab
+  /* ───── Tab data loader ───── */
+
   useEffect(() => {
     if (!token) return;
-    
-    if (activeTab === 'users') {
-      fetchUsers();
-    } else if (activeTab === 'exams') {
-      fetchExams();
-    } else if (activeTab === 'results') {
-      fetchResults();
-    } else if (activeTab === 'stats') {
-      fetchStats();
-    } else if (activeTab === 'feedback') {
-      fetchFeedback();
-    }
+    if (activeTab === 'users') fetchUsers();
+    else if (activeTab === 'exams') fetchExams();
+    else if (activeTab === 'results') fetchResults();
+    else if (activeTab === 'stats') fetchStats();
+    else if (activeTab === 'feedback') fetchFeedback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, activeTab]);
 
+  /* ───── Validation helpers ───── */
+
   const validateUsername = (username) => {
-    // Only letters, underscore, and full stop - no spaces, no digits, no other characters
-    const usernameRegex = /^[a-zA-Z._]+$/;
-    if (!usernameRegex.test(username)) {
+    const re = /^[a-zA-Z._]+$/;
+    if (!re.test(username))
       return 'Username can only contain letters, underscore (_), and full stop (.). No spaces, digits, or other characters allowed.';
-    }
     return '';
   };
 
   const validateFullName = (fullName) => {
-    // Name only with spaces if needed - letters and spaces
-    const fullNameRegex = /^[a-zA-Z\s]+$/;
-    if (!fullNameRegex.test(fullName)) {
-      return 'Full name can only contain letters and spaces.';
-    }
-    if (fullName.trim().length < 2) {
-      return 'Full name must be at least 2 characters long.';
-    }
+    const re = /^[a-zA-Z\s]+$/;
+    if (!re.test(fullName)) return 'Full name can only contain letters and spaces.';
+    if (fullName.trim().length < 2) return 'Full name must be at least 2 characters long.';
     return '';
   };
+
+  /* ───── Form handlers ───── */
 
   const handleUserFormChange = (e) => {
     const { name, value } = e.target;
     setUserForm({ ...userForm, [name]: value });
-    
-    // Clear error for this field when user starts typing
+
     if (userFormErrors[name]) {
       setUserFormErrors({ ...userFormErrors, [name]: '' });
     }
-    
-    // Real-time validation
+
     if (name === 'username') {
-      const usernameError = validateUsername(value);
-      if (usernameError) {
-        setUserFormErrors({ ...userFormErrors, username: usernameError });
-      } else {
-        const newErrors = { ...userFormErrors };
-        delete newErrors.username;
-        setUserFormErrors(newErrors);
+      const err = validateUsername(value);
+      if (err) setUserFormErrors({ ...userFormErrors, username: err });
+      else {
+        const copy = { ...userFormErrors };
+        delete copy.username;
+        setUserFormErrors(copy);
       }
     } else if (name === 'full_name') {
-      const fullNameError = validateFullName(value);
-      if (fullNameError) {
-        setUserFormErrors({ ...userFormErrors, full_name: fullNameError });
-      } else {
-        const newErrors = { ...userFormErrors };
-        delete newErrors.full_name;
-        setUserFormErrors(newErrors);
+      const err = validateFullName(value);
+      if (err) setUserFormErrors({ ...userFormErrors, full_name: err });
+      else {
+        const copy = { ...userFormErrors };
+        delete copy.full_name;
+        setUserFormErrors(copy);
       }
     }
   };
 
-  const handleEditUser = (user) => {
-    setEditingUserId(user._id);
+  const handleEditUser = (u) => {
+    setEditingUserId(u._id);
     setUserForm({
-      username: user.username,
-      full_name: user.full_name,
-      email: user.email,
-      password: '', // Don't pre-fill password
-      role: user.role,
+      username: u.username,
+      full_name: u.full_name,
+      email: u.email,
+      password: '',
+      role: u.role,
     });
-    setUserFormErrors({}); // Clear any validation errors
-    // Scroll to form
+    setUserFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancelEdit = () => {
     setEditingUserId(null);
-    setUserForm({
-      username: '',
-      full_name: '',
-      email: '',
-      password: '',
-      role: 'Student',
-    });
-    setUserFormErrors({}); // Clear any validation errors
+    setUserForm({ username: '', full_name: '', email: '', password: '', role: 'Student' });
+    setUserFormErrors({});
   };
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setError('');
-    
-    // Validate all fields
+
     const validationErrors = {};
-    const usernameError = validateUsername(userForm.username);
-    if (usernameError) {
-      validationErrors.username = usernameError;
-    }
-    
-    const fullNameError = validateFullName(userForm.full_name);
-    if (fullNameError) {
-      validationErrors.full_name = fullNameError;
-    }
-    
+    const ue = validateUsername(userForm.username);
+    if (ue) validationErrors.username = ue;
+    const fe = validateFullName(userForm.full_name);
+    if (fe) validationErrors.full_name = fe;
+
     if (Object.keys(validationErrors).length > 0) {
       setUserFormErrors(validationErrors);
       return;
     }
-    
+
     try {
       if (editingUserId) {
-        // Update existing user
         const updateData = {
           username: userForm.username,
           full_name: userForm.full_name,
           email: userForm.email,
           role: userForm.role,
         };
-        // Only include password if it's provided
-        if (userForm.password.trim()) {
-          updateData.password = userForm.password;
-        }
+        if (userForm.password.trim()) updateData.password = userForm.password;
 
         const res = await fetch(`${API_BASE}/api/users/${editingUserId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(updateData),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          const msg = body?.message || body?.errors?.[0]?.msg || 'Failed to update user';
-          throw new Error(msg);
+          throw new Error(body?.message || body?.errors?.[0]?.msg || 'Failed to update user');
         }
         setEditingUserId(null);
       } else {
-        // Create new user
         const res = await fetch(`${API_BASE}/api/users`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(userForm),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          const msg = body?.message || body?.errors?.[0]?.msg || 'Failed to create user';
-          throw new Error(msg);
+          throw new Error(body?.message || body?.errors?.[0]?.msg || 'Failed to create user');
         }
       }
-      setUserForm({
-        username: '',
-        full_name: '',
-        email: '',
-        password: '',
-        role: 'Student',
-      });
-      setUserFormErrors({}); // Clear validation errors on success
+      setUserForm({ username: '', full_name: '', email: '', password: '', role: 'Student' });
+      setUserFormErrors({});
       fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -361,272 +314,385 @@ const AdminDashboard = () => {
     }
   };
 
+  /* ═══════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════ */
+
   return (
     <div className="admin-dashboard">
-      <div className="dashboard-header">
-        <h2><i className="bi bi-shield-check"></i> System Admin Dashboard</h2>
+      {/* ── Background blobs ── */}
+      <div className="admin-bg-effects">
+        <div className="admin-blob admin-blob-1" />
+        <div className="admin-blob admin-blob-2" />
+        <div className="admin-blob admin-blob-3" />
       </div>
 
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <ul className="nav nav-tabs admin-tabs" role="tablist">
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
-            type="button"
-          >
-            <i className="bi bi-people me-2"></i>User Management
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'exams' ? 'active' : ''}`}
-            onClick={() => setActiveTab('exams')}
-            type="button"
-          >
-            <i className="bi bi-file-earmark-text me-2"></i>All Examinations
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'results' ? 'active' : ''}`}
-            onClick={() => setActiveTab('results')}
-            type="button"
-          >
-            <i className="bi bi-clipboard-data me-2"></i>All Results
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'stats' ? 'active' : ''}`}
-            onClick={() => setActiveTab('stats')}
-            type="button"
-          >
-            <i className="bi bi-graph-up me-2"></i>System Statistics
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'feedback' ? 'active' : ''}`}
-            onClick={() => setActiveTab('feedback')}
-            type="button"
-          >
-            <i className="bi bi-chat-left-text me-2"></i>Feedback
-          </button>
-        </li>
-      </ul>
-
-      {/* Users Tab */}
-      {activeTab === 'users' && (
-        <div>
-          <div className="card user-form-card">
-            <h3>
-              <i className={`bi ${editingUserId ? 'bi-pencil-square' : 'bi-person-plus'} me-2`}></i>
-              {editingUserId ? 'Edit User' : 'Create User'}
-            </h3>
-            <form onSubmit={handleCreateUser}>
-              <div className="user-form-row">
-                <div className="mb-3">
-                  <label htmlFor="username" className="form-label">Username</label>
-                  <input
-                    type="text"
-                    className={`form-control ${userFormErrors.username ? 'is-invalid' : ''}`}
-                    id="username"
-                    name="username"
-                    placeholder="Username (letters, _, . only)"
-                    value={userForm.username}
-                    onChange={handleUserFormChange}
-                    required
-                  />
-                  {userFormErrors.username && (
-                    <div className="invalid-feedback d-block">
-                      {userFormErrors.username}
-                    </div>
-                  )}
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="full_name" className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    className={`form-control ${userFormErrors.full_name ? 'is-invalid' : ''}`}
-                    id="full_name"
-                    name="full_name"
-                    placeholder="Full name"
-                    value={userForm.full_name}
-                    onChange={handleUserFormChange}
-                    required
-                  />
-                  {userFormErrors.full_name && (
-                    <div className="invalid-feedback d-block">
-                      {userFormErrors.full_name}
-                    </div>
-                  )}
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    id="email"
-                    name="email"
-                    placeholder="Email"
-                    value={userForm.email}
-                    onChange={handleUserFormChange}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="password" className="form-label">Password</label>
-                  <div className="input-group">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="form-control"
-                      id="password"
-                      name="password"
-                      placeholder={editingUserId ? "Password (leave blank to keep current)" : "Password"}
-                      value={userForm.password}
-                      onChange={handleUserFormChange}
-                      required={!editingUserId}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
-                    </button>
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="role" className="form-label">Role</label>
-                  <select
-                    className="form-select"
-                    id="role"
-                    name="role"
-                    value={userForm.role}
-                    onChange={handleUserFormChange}
-                  >
-                    <option value="Student">Student</option>
-                    <option value="System Admin">System Admin</option>
-                    <option value="Exam Manager">Exam Manager</option>
-                    <option value="Question Manager">Question Manager</option>
-                    <option value="Result Manager">Result Manager</option>
-                  </select>
-                </div>
-              </div>
-              <div className="user-form-actions">
-                <button type="submit" className={`btn ${editingUserId ? 'btn-success' : 'btn-primary'}`}>
-                  <i className={`bi ${editingUserId ? 'bi-check-circle' : 'bi-plus-circle'} me-2`}></i>
-                  {editingUserId ? 'Update User' : 'Create User'}
-                </button>
-                {editingUserId && (
-                  <button type="button" className="btn btn-secondary" onClick={handleCancelEdit}>
-                    <i className="bi bi-x-circle me-2"></i>Cancel
-                  </button>
-                )}
-              </div>
-            </form>
+      {/* ── Sidebar ── */}
+      <aside className={`admin-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <i className="bi bi-shield-check-fill" />
+            <span className="sidebar-logo-text">Admin Panel</span>
           </div>
+          {sidebarOpen && (
+            <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)}>
+              <i className="bi bi-chevron-left" />
+            </button>
+          )}
+        </div>
 
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-people-fill me-2"></i>Existing Users ({users.length})
-              </h3>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              className={`sidebar-nav-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab(item.key);
+                if (window.innerWidth < 768) setSidebarOpen(false);
+              }}
+              title={!sidebarOpen ? item.label : undefined}
+            >
+              <i className={`bi ${item.icon}`} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <button
+            className="sidebar-nav-item sidebar-logout-btn"
+            onClick={logout}
+            title={!sidebarOpen ? 'Logout' : undefined}
+          >
+            <i className="bi bi-box-arrow-left" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile overlay ── */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* ── Main area ── */}
+      <div className={`admin-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+        {/* Top bar */}
+        <header className="admin-topbar">
+          {!sidebarOpen && (
+            <button className="sidebar-expand-btn" onClick={() => setSidebarOpen(true)}>
+              <i className="bi bi-chevron-right" />
+            </button>
+          )}
+          <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>
+            <i className="bi bi-list" />
+          </button>
+          <div className="topbar-title">
+            <h1>{NAV_ITEMS.find((n) => n.key === activeTab)?.label}</h1>
+          </div>
+          <div className="topbar-actions">
+            <div className="topbar-user-chip">
+              <div className="topbar-avatar" title={user?.full_name || 'Admin'}>
+                {user?.full_name?.charAt(0)?.toUpperCase() || 'A'}
+              </div>
+              <div className="topbar-user-info">
+                <span className="topbar-username">{user?.full_name || 'Admin'}</span>
+                <span className="topbar-role">{user?.role}</span>
+              </div>
             </div>
-            <div className="card-body">
-              {usersLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="admin-content">
+          {/* Error alert */}
+          {error && (
+            <div className="admin-alert admin-alert-danger">
+              <i className="bi bi-exclamation-triangle-fill" />
+              <span>{error}</span>
+              <button onClick={() => setError('')}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+          )}
+
+          {/* ═══ STATS TAB ═══ */}
+          {activeTab === 'stats' && (
+            <div>
+              {statsLoading ? (
+                <div className="admin-loading"><div className="admin-spinner" /></div>
+              ) : stats ? (
+                <div className="admin-stats-grid">
+                  {/* Users */}
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-card-header">
+                      <div className="admin-stat-card-icon primary"><i className="bi bi-people-fill" /></div>
+                      <span className="admin-stat-card-title">Users</span>
+                    </div>
+                    <div className="admin-stat-card-value">{stats.users.total}</div>
+                    <div className="admin-stat-card-details">
+                      {Object.entries(stats.users.byRole).map(([role, count]) => (
+                        <div key={role} className="admin-stat-detail-row">
+                          <span>{role}</span>
+                          <strong>{count}</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : users.length === 0 ? (
-                <div className="empty-container">
-                  <i className="bi bi-inbox"></i>
-                  <p>No users found.</p>
+
+                  {/* Examinations */}
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-card-header">
+                      <div className="admin-stat-card-icon success"><i className="bi bi-file-earmark-text-fill" /></div>
+                      <span className="admin-stat-card-title">Examinations</span>
+                    </div>
+                    <div className="admin-stat-card-value">{stats.exams.total}</div>
+                    <div className="admin-stat-card-details">
+                      <div className="admin-stat-detail-row">
+                        <span>Active</span>
+                        <strong style={{ color: '#4ade80' }}>{stats.exams.active}</strong>
+                      </div>
+                      <div className="admin-stat-detail-row">
+                        <span>Inactive</span>
+                        <strong style={{ color: '#fca5a5' }}>{stats.exams.inactive}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Questions */}
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-card-header">
+                      <div className="admin-stat-card-icon warning"><i className="bi bi-question-circle-fill" /></div>
+                      <span className="admin-stat-card-title">Questions</span>
+                    </div>
+                    <div className="admin-stat-card-value">{stats.questions.total}</div>
+                    <p style={{ color: 'var(--text-muted)', margin: '0.75rem 0 0', fontSize: '0.85rem' }}>
+                      Total questions in system
+                    </p>
+                  </div>
+
+                  {/* Attempts */}
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-card-header">
+                      <div className="admin-stat-card-icon info"><i className="bi bi-clipboard-check-fill" /></div>
+                      <span className="admin-stat-card-title">Exam Attempts</span>
+                    </div>
+                    <div className="admin-stat-card-value">{stats.attempts.total}</div>
+                    <div className="admin-stat-card-details">
+                      <div className="admin-stat-detail-row">
+                        <span>Completed</span>
+                        <strong style={{ color: '#4ade80' }}>{stats.attempts.completed}</strong>
+                      </div>
+                      <div className="admin-stat-detail-row">
+                        <span>Pending</span>
+                        <strong style={{ color: '#fbbf24' }}>{stats.attempts.pending}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Performance */}
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-card-header">
+                      <div className="admin-stat-card-icon purple"><i className="bi bi-trophy-fill" /></div>
+                      <span className="admin-stat-card-title">Performance</span>
+                    </div>
+                    <div className="admin-stat-card-details" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
+                      <div className="admin-stat-detail-row">
+                        <span>Average Score</span>
+                        <strong style={{ fontSize: '1.2rem' }}>{stats.performance.averageScore.toFixed(1)}</strong>
+                      </div>
+                      <div className="admin-stat-detail-row">
+                        <span>Highest Score</span>
+                        <strong style={{ fontSize: '1.2rem', color: '#4ade80' }}>{stats.performance.maxScore}</strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>Username</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u) => (
-                        <tr key={u._id}>
-                          <td><strong>{u.username}</strong></td>
-                          <td>{u.full_name}</td>
-                          <td>{u.email}</td>
-                          <td><span className="role-badge">{u.role}</span></td>
-                          <td>{new Date(u.createdAt).toLocaleDateString('en-GB')}</td>
-                          <td>
-                            <div className="table-actions">
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => handleEditUser(u)}
-                              >
-                                <i className="bi bi-pencil me-1"></i>Edit
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleDeleteUser(u._id)}
-                              >
-                                <i className="bi bi-trash me-1"></i>Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="admin-empty">
+                  <i className="bi bi-exclamation-triangle" />
+                  <p>Unable to load statistics.</p>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Exams Tab */}
-      {activeTab === 'exams' && (
-        <div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-file-earmark-text-fill me-2"></i>All Examinations ({exams.length})
-              </h3>
-            </div>
-            <div className="card-body">
-              {examsLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
+          {/* ═══ USERS TAB ═══ */}
+          {activeTab === 'users' && (
+            <div>
+              {/* User form */}
+              <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
+                <div className="glass-card-header">
+                  <h3>
+                    <i className={`bi ${editingUserId ? 'bi-pencil-square' : 'bi-person-plus'}`} />
+                    {editingUserId ? 'Edit User' : 'Create User'}
+                  </h3>
+                </div>
+                <form onSubmit={handleCreateUser}>
+                  <div className="admin-user-form-grid">
+                    <div>
+                      <label className="form-label">Username</label>
+                      <input
+                        type="text"
+                        className={`form-control ${userFormErrors.username ? 'is-invalid' : ''}`}
+                        name="username"
+                        placeholder="Username (letters, _, . only)"
+                        value={userForm.username}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      {userFormErrors.username && (
+                        <div className="invalid-feedback d-block">{userFormErrors.username}</div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="form-label">Full Name</label>
+                      <input
+                        type="text"
+                        className={`form-control ${userFormErrors.full_name ? 'is-invalid' : ''}`}
+                        name="full_name"
+                        placeholder="Full name"
+                        value={userForm.full_name}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      {userFormErrors.full_name && (
+                        <div className="invalid-feedback d-block">{userFormErrors.full_name}</div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="form-label">Email</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        name="email"
+                        placeholder="Email"
+                        value={userForm.email}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Password</label>
+                      <div className="input-group">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          className="form-control"
+                          name="password"
+                          placeholder={editingUserId ? 'Leave blank to keep current' : 'Password'}
+                          value={userForm.password}
+                          onChange={handleUserFormChange}
+                          required={!editingUserId}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`} />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="form-label">Role</label>
+                      <select
+                        className="form-select"
+                        name="role"
+                        value={userForm.role}
+                        onChange={handleUserFormChange}
+                      >
+                        <option value="Student">Student</option>
+                        <option value="System Admin">System Admin</option>
+                        <option value="Exam Manager">Exam Manager</option>
+                        <option value="Question Manager">Question Manager</option>
+                        <option value="Result Manager">Result Manager</option>
+                      </select>
+                    </div>
                   </div>
+                  <div className="admin-form-actions">
+                    <button type="submit" className={editingUserId ? 'btn-admin-success' : 'btn-admin-primary'}>
+                      <i className={`bi ${editingUserId ? 'bi-check-circle' : 'bi-plus-circle'}`} />
+                      {editingUserId ? 'Update User' : 'Create User'}
+                    </button>
+                    {editingUserId && (
+                      <button type="button" className="btn-admin-secondary" onClick={handleCancelEdit}>
+                        <i className="bi bi-x-circle" /> Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Users table */}
+              <div className="glass-card">
+                <div className="glass-card-header">
+                  <h3>
+                    <i className="bi bi-people-fill" />
+                    Existing Users ({users.length})
+                  </h3>
                 </div>
+                {usersLoading ? (
+                  <div className="admin-loading"><div className="admin-spinner" /></div>
+                ) : users.length === 0 ? (
+                  <div className="admin-empty"><i className="bi bi-inbox" /><p>No users found.</p></div>
+                ) : (
+                  <div className="admin-table-wrapper">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Username</th>
+                          <th>Full Name</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Created</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => (
+                          <tr key={u._id}>
+                            <td><strong style={{ color: 'var(--text)' }}>{u.username}</strong></td>
+                            <td>{u.full_name}</td>
+                            <td>{u.email}</td>
+                            <td><span className="admin-role-badge">{u.role}</span></td>
+                            <td>{new Date(u.createdAt).toLocaleDateString('en-GB')}</td>
+                            <td>
+                              <div className="admin-table-actions">
+                                <button className="btn-admin-primary btn-admin-sm" onClick={() => handleEditUser(u)}>
+                                  <i className="bi bi-pencil" /> Edit
+                                </button>
+                                <button className="btn-admin-danger btn-admin-sm" onClick={() => handleDeleteUser(u._id)}>
+                                  <i className="bi bi-trash" /> Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ EXAMS TAB ═══ */}
+          {activeTab === 'exams' && (
+            <div className="glass-card">
+              <div className="glass-card-header">
+                <h3>
+                  <i className="bi bi-file-earmark-text-fill" />
+                  All Examinations ({exams.length})
+                </h3>
+              </div>
+              {examsLoading ? (
+                <div className="admin-loading"><div className="admin-spinner" /></div>
               ) : exams.length === 0 ? (
-                <div className="empty-container">
-                  <i className="bi bi-inbox"></i>
-                  <p>No exams found.</p>
-                </div>
+                <div className="admin-empty"><i className="bi bi-inbox" /><p>No exams found.</p></div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover">
+                <div className="admin-table-wrapper">
+                  <table className="table">
                     <thead>
                       <tr>
                         <th>Exam Name</th>
@@ -641,18 +707,18 @@ const AdminDashboard = () => {
                     <tbody>
                       {exams.map((exam) => (
                         <tr key={exam._id}>
-                          <td><strong>{exam.exam_name}</strong></td>
+                          <td><strong style={{ color: 'var(--text)' }}>{exam.exam_name}</strong></td>
                           <td>
                             {exam.created_by?.full_name || exam.created_by?.username || 'N/A'}
                             <br />
-                            <small className="text-muted">{exam.created_by?.email}</small>
+                            <small style={{ color: 'var(--text-muted)' }}>{exam.created_by?.email}</small>
                           </td>
                           <td>{new Date(exam.start_time).toLocaleString('en-GB')}</td>
                           <td>{new Date(exam.end_time).toLocaleString('en-GB')}</td>
                           <td>{exam.duration}</td>
                           <td>
-                            <span className={`status-badge ${exam.is_active ? 'status-active' : 'status-inactive'}`}>
-                              <i className={`bi ${exam.is_active ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                            <span className={`admin-status-badge ${exam.is_active ? 'active' : 'inactive'}`}>
+                              <i className={`bi ${exam.is_active ? 'bi-check-circle' : 'bi-x-circle'}`} />
                               {exam.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </td>
@@ -664,34 +730,24 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Results Tab */}
-      {activeTab === 'results' && (
-        <div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-clipboard-data-fill me-2"></i>All Exam Results ({results.length})
-              </h3>
-            </div>
-            <div className="card-body">
+          {/* ═══ RESULTS TAB ═══ */}
+          {activeTab === 'results' && (
+            <div className="glass-card">
+              <div className="glass-card-header">
+                <h3>
+                  <i className="bi bi-clipboard-data-fill" />
+                  All Exam Results ({results.length})
+                </h3>
+              </div>
               {resultsLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
+                <div className="admin-loading"><div className="admin-spinner" /></div>
               ) : results.length === 0 ? (
-                <div className="empty-container">
-                  <i className="bi bi-inbox"></i>
-                  <p>No results found.</p>
-                </div>
+                <div className="admin-empty"><i className="bi bi-inbox" /><p>No results found.</p></div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover">
+                <div className="admin-table-wrapper">
+                  <table className="table">
                     <thead>
                       <tr>
                         <th>Exam Name</th>
@@ -713,22 +769,19 @@ const AdminDashboard = () => {
                           <td>{new Date(result.start_time).toLocaleString('en-GB')}</td>
                           <td>{result.end_time ? new Date(result.end_time).toLocaleString('en-GB') : 'N/A'}</td>
                           <td>
-                            <strong className={`score-display ${(() => {
-                              if (!result.completed) return 'score-pending';
-                              // Use stored is_passed if available
-                              if (result.is_passed !== undefined) {
-                                return result.is_passed ? 'score-pass' : 'score-fail';
-                              }
-                              // Fallback: we don't have total questions here, so we can't calculate percentage
-                              // This should not happen for new records, but for old records, default to fail
-                              return 'score-fail';
-                            })()}`}>
-                              {result.completed ? `${result.total_score}` : '-'}
+                            <strong
+                              className={`admin-score ${(() => {
+                                if (!result.completed) return 'pending';
+                                if (result.is_passed !== undefined) return result.is_passed ? 'pass' : 'fail';
+                                return 'fail';
+                              })()}`}
+                            >
+                              {result.completed ? result.total_score : '-'}
                             </strong>
                           </td>
                           <td>
-                            <span className={`status-badge ${result.completed ? 'status-completed' : 'status-pending'}`}>
-                              <i className={`bi ${result.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                            <span className={`admin-status-badge ${result.completed ? 'completed' : 'pending'}`}>
+                              <i className={`bi ${result.completed ? 'bi-check-circle' : 'bi-clock'}`} />
                               {result.completed ? 'Completed' : 'In Progress'}
                             </span>
                           </td>
@@ -740,241 +793,104 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Stats Tab */}
-      {activeTab === 'stats' && (
-        <div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-graph-up-arrow me-2"></i>System Statistics
-              </h3>
-            </div>
-            <div className="card-body">
-              {statsLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-              ) : stats ? (
-                <div className="stats-grid">
-                  {/* Users Stats */}
-                  <div className="stat-card">
-                    <div className="stat-card-header">
-                      <i className="bi bi-people-fill text-primary"></i>
-                      <h4 className="text-primary">Users</h4>
-                    </div>
-                    <div className="stat-card-value text-primary">{stats.users.total}</div>
-                    <div className="stat-card-details">
-                      {Object.entries(stats.users.byRole).map(([role, count]) => (
-                        <div key={role} className="stat-card-detail-row">
-                          <span>{role}:</span>
-                          <strong>{count}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Exams Stats */}
-                  <div className="stat-card">
-                    <div className="stat-card-header">
-                      <i className="bi bi-file-earmark-text-fill text-success"></i>
-                      <h4 className="text-success">Examinations</h4>
-                    </div>
-                    <div className="stat-card-value text-success">{stats.exams.total}</div>
-                    <div className="stat-card-details">
-                      <div className="stat-card-detail-row">
-                        <span>Active:</span>
-                        <strong className="text-success">{stats.exams.active}</strong>
-                      </div>
-                      <div className="stat-card-detail-row">
-                        <span>Inactive:</span>
-                        <strong className="text-danger">{stats.exams.inactive}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Questions Stats */}
-                  <div className="stat-card">
-                    <div className="stat-card-header">
-                      <i className="bi bi-question-circle-fill text-warning"></i>
-                      <h4 className="text-warning">Questions</h4>
-                    </div>
-                    <div className="stat-card-value text-warning">{stats.questions.total}</div>
-                    <p className="text-muted mb-0 mt-3">Total questions in system</p>
-                  </div>
-
-                  {/* Attempts Stats */}
-                  <div className="stat-card">
-                    <div className="stat-card-header">
-                      <i className="bi bi-clipboard-check-fill text-info"></i>
-                      <h4 className="text-info">Exam Attempts</h4>
-                    </div>
-                    <div className="stat-card-value text-info">{stats.attempts.total}</div>
-                    <div className="stat-card-details">
-                      <div className="stat-card-detail-row">
-                        <span>Completed:</span>
-                        <strong className="text-success">{stats.attempts.completed}</strong>
-                      </div>
-                      <div className="stat-card-detail-row">
-                        <span>Pending:</span>
-                        <strong className="text-warning">{stats.attempts.pending}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Performance Stats */}
-                  <div className="stat-card">
-                    <div className="stat-card-header">
-                      <i className="bi bi-trophy-fill text-purple"></i>
-                      <h4 className="text-purple">Performance</h4>
-                    </div>
-                    <div className="stat-card-details">
-                      <div className="stat-card-detail-row">
-                        <span>Average Score:</span>
-                        <strong style={{ fontSize: '1.2rem' }}>{stats.performance.averageScore.toFixed(1)}</strong>
-                      </div>
-                      <div className="stat-card-detail-row">
-                        <span>Highest Score:</span>
-                        <strong className="text-success" style={{ fontSize: '1.2rem' }}>{stats.performance.maxScore}</strong>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="empty-container">
-                  <i className="bi bi-exclamation-triangle"></i>
-                  <p>Unable to load statistics.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Feedback Tab */}
-      {activeTab === 'feedback' && (
-        <div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-chat-left-text me-2"></i>Student Feedback
-              </h3>
-            </div>
-            <div className="card-body">
+          {/* ═══ FEEDBACK TAB ═══ */}
+          {activeTab === 'feedback' && (
+            <div className="glass-card">
+              <div className="glass-card-header">
+                <h3>
+                  <i className="bi bi-chat-left-text-fill" />
+                  Student Feedback
+                </h3>
+              </div>
               {feedbackLoading ? (
-                <div className="loading-container">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
+                <div className="admin-loading"><div className="admin-spinner" /></div>
               ) : feedback.length === 0 ? (
-                <div className="empty-container">
-                  <i className="bi bi-inbox"></i>
-                  <p>No feedback received yet.</p>
-                </div>
+                <div className="admin-empty"><i className="bi bi-inbox" /><p>No feedback received yet.</p></div>
               ) : (
-                <div className="d-flex flex-column gap-3">
+                <div className="admin-feedback-list">
                   {feedback.map((item) => (
-                    <div key={item._id} className="card">
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div>
-                            <strong>
-                              {item.student_id?.full_name || item.student_id?.username || 'Unknown Student'}
-                            </strong>
-                            {item.student_id?.email && (
-                              <span className="text-muted ms-2">({item.student_id.email})</span>
-                            )}
-                          </div>
-                          <div className="text-end">
-                            <span className={`badge ${item.status === 'Replied' ? 'bg-primary' : 'bg-warning'} me-2`}>
-                              {item.status}
-                            </span>
-                            <small className="text-muted d-block">
-                              {new Date(item.createdAt).toLocaleString('en-GB')}
-                            </small>
-                          </div>
+                    <div key={item._id} className="admin-feedback-card">
+                      <div className="admin-feedback-header">
+                        <div>
+                          <span className="admin-feedback-student">
+                            {item.student_id?.full_name || item.student_id?.username || 'Unknown Student'}
+                          </span>
+                          {item.student_id?.email && (
+                            <span className="admin-feedback-email">({item.student_id.email})</span>
+                          )}
                         </div>
-                        <div className="mb-3">
-                          <strong>Message:</strong>
-                          <p className="mb-0 mt-1">{item.message}</p>
+                        <div className="admin-feedback-meta">
+                          <span className={`admin-feedback-badge ${item.status === 'Replied' ? 'replied' : 'pending'}`}>
+                            {item.status}
+                          </span>
+                          <span className="admin-feedback-date">
+                            {new Date(item.createdAt).toLocaleString('en-GB')}
+                          </span>
                         </div>
-                        {item.reply ? (
-                          <div className="border-start border-3 border-primary ps-3 mb-3">
-                            <strong className="text-primary">Your Reply:</strong>
-                            <p className="mb-0 mt-1">{item.reply}</p>
-                            <small className="text-muted">
-                              Replied on: {new Date(item.updatedAt).toLocaleString('en-GB')}
-                            </small>
-                          </div>
-                        ) : (
-                          <div>
-                            {replyingTo === item._id ? (
-                              <div className="mt-3">
-                                <div className="mb-2">
-                                  <label htmlFor={`reply-${item._id}`} className="form-label">Your Reply</label>
-                                  <textarea
-                                    id={`reply-${item._id}`}
-                                    className="form-control"
-                                    rows="3"
-                                    value={replyMessage}
-                                    onChange={(e) => setReplyMessage(e.target.value)}
-                                    placeholder="Enter your reply here..."
-                                  />
-                                </div>
-                                <div className="d-flex gap-2">
-                                  <button
-                                    className="btn btn-primary btn-sm"
-                                    onClick={() => handleReply(item._id)}
-                                    disabled={replying}
-                                  >
-                                    {replying ? (
-                                      <>
-                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                        Sending...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <i className="bi bi-send me-2"></i>Reply
-                                      </>
-                                    )}
-                                  </button>
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => {
-                                      setReplyingTo(null);
-                                      setReplyMessage('');
-                                    }}
-                                    disabled={replying}
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                className="btn btn-primary btn-sm"
-                                onClick={() => setReplyingTo(item._id)}
-                              >
-                                <i className="bi bi-reply me-2"></i>Reply
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
+
+                      <div className="admin-feedback-message">
+                        <label>Message</label>
+                        <p>{item.message}</p>
+                      </div>
+
+                      {item.reply ? (
+                        <div className="admin-feedback-reply">
+                          <label>Your Reply</label>
+                          <p>{item.reply}</p>
+                          <small>Replied on: {new Date(item.updatedAt).toLocaleString('en-GB')}</small>
+                        </div>
+                      ) : (
+                        <div>
+                          {replyingTo === item._id ? (
+                            <div className="admin-reply-form">
+                              <label className="form-label">Your Reply</label>
+                              <textarea
+                                value={replyMessage}
+                                onChange={(e) => setReplyMessage(e.target.value)}
+                                placeholder="Enter your reply here..."
+                              />
+                              <div className="admin-reply-actions">
+                                <button
+                                  className="btn-admin-primary btn-admin-sm"
+                                  onClick={() => handleReply(item._id)}
+                                  disabled={replying}
+                                >
+                                  {replying ? (
+                                    <><span className="admin-btn-spinner" /> Sending...</>
+                                  ) : (
+                                    <><i className="bi bi-send" /> Reply</>
+                                  )}
+                                </button>
+                                <button
+                                  className="btn-admin-secondary btn-admin-sm"
+                                  onClick={() => { setReplyingTo(null); setReplyMessage(''); }}
+                                  disabled={replying}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              className="btn-admin-primary btn-admin-sm"
+                              onClick={() => setReplyingTo(item._id)}
+                            >
+                              <i className="bi bi-reply" /> Reply
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

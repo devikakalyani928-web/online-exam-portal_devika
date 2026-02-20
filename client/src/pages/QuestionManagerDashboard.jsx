@@ -4,9 +4,17 @@ import '../styles/QuestionManagerDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
+const NAV_ITEMS = [
+  { key: 'manage',       icon: 'bi-file-earmark-text-fill', label: 'Manage by Exam' },
+  { key: 'questionBank', icon: 'bi-journal-text',           label: 'Question Bank' },
+  { key: 'stats',        icon: 'bi-graph-up',               label: 'Statistics' },
+];
+
 const QuestionManagerDashboard = () => {
-  const { token } = useAuth();
+  const { token, user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('manage');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   const [exams, setExams] = useState([]);
   const [selectedExamId, setSelectedExamId] = useState('');
   const [questions, setQuestions] = useState([]);
@@ -34,6 +42,8 @@ const QuestionManagerDashboard = () => {
     option4: '',
     correct_option: 1,
   });
+
+  /* ───── Data fetchers ───── */
 
   const fetchExams = async () => {
     try {
@@ -101,9 +111,7 @@ const QuestionManagerDashboard = () => {
   };
 
   useEffect(() => {
-    if (token) {
-      fetchExams();
-    }
+    if (token) fetchExams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -114,16 +122,14 @@ const QuestionManagerDashboard = () => {
   }, [selectedExamId, token, activeTab]);
 
   useEffect(() => {
-    if (token && activeTab === 'questionBank') {
-      fetchAllQuestions();
-    }
+    if (token && activeTab === 'questionBank') fetchAllQuestions();
   }, [token, activeTab]);
 
   useEffect(() => {
-    if (token && activeTab === 'stats') {
-      fetchStats();
-    }
+    if (token && activeTab === 'stats') fetchStats();
   }, [token, activeTab]);
+
+  /* ───── Form handlers ───── */
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -170,7 +176,6 @@ const QuestionManagerDashboard = () => {
       return;
     }
 
-    // Check for duplicates
     const isDuplicate = await checkForDuplicate(form.question_text, selectedExamId);
     if (isDuplicate) {
       setError('A similar question already exists in this exam. Please modify the question text.');
@@ -201,9 +206,7 @@ const QuestionManagerDashboard = () => {
         correct_option: 1,
       });
       fetchQuestions(selectedExamId);
-      if (activeTab === 'questionBank') {
-        fetchAllQuestions();
-      }
+      if (activeTab === 'questionBank') fetchAllQuestions();
     } catch (err) {
       setError(err.message);
     }
@@ -226,7 +229,6 @@ const QuestionManagerDashboard = () => {
     e.preventDefault();
     if (!editingQuestion) return;
 
-    // Check for duplicates (excluding current question)
     const question = questions.find((q) => q._id === editingQuestion);
     if (question) {
       const isDuplicate = await checkForDuplicate(editForm.question_text, question.exam_id, editingQuestion);
@@ -250,9 +252,7 @@ const QuestionManagerDashboard = () => {
       setEditMode(false);
       setEditingQuestion(null);
       fetchQuestions(selectedExamId);
-      if (activeTab === 'questionBank') {
-        fetchAllQuestions();
-      }
+      if (activeTab === 'questionBank') fetchAllQuestions();
     } catch (err) {
       setError(err.message);
     }
@@ -267,13 +267,13 @@ const QuestionManagerDashboard = () => {
       });
       if (!res.ok) throw new Error('Failed to delete question');
       setQuestions((prev) => prev.filter((q) => q._id !== id));
-      if (activeTab === 'questionBank') {
-        fetchAllQuestions();
-      }
+      if (activeTab === 'questionBank') fetchAllQuestions();
     } catch (err) {
       setError(err.message);
     }
   };
+
+  /* ───── Derived data ───── */
 
   const filteredQuestions = allQuestions.filter((q) => {
     if (!searchTerm) return true;
@@ -288,109 +288,161 @@ const QuestionManagerDashboard = () => {
     );
   });
 
-  // Group questions by exam name (subject)
   const groupedQuestions = filteredQuestions.reduce((acc, question) => {
     const examName = question.exam_id?.exam_name || 'Unassigned';
-    if (!acc[examName]) {
-      acc[examName] = [];
-    }
+    if (!acc[examName]) acc[examName] = [];
     acc[examName].push(question);
     return acc;
   }, {});
 
-  // Sort exam names alphabetically
   const sortedExamNames = Object.keys(groupedQuestions).sort();
 
+  /* ═══════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════ */
+
   return (
-    <div className="question-manager-dashboard">
-      <div className="dashboard-header">
-        <h2><i className="bi bi-question-circle"></i> Question Manager Dashboard</h2>
+    <div className="qm-dashboard">
+      {/* ── Background blobs ── */}
+      <div className="qm-bg-effects">
+        <div className="qm-blob qm-blob-1" />
+        <div className="qm-blob qm-blob-2" />
+        <div className="qm-blob qm-blob-3" />
       </div>
 
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+      {/* ── Sidebar ── */}
+      <aside className={`qm-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
+        <div className="qm-sidebar-header">
+          <div className="qm-sidebar-logo">
+            <i className="bi bi-question-circle-fill" />
+            <span className="qm-sidebar-logo-text">Question Manager</span>
+          </div>
+          {sidebarOpen && (
+            <button className="qm-sidebar-toggle" onClick={() => setSidebarOpen(false)}>
+              <i className="bi bi-chevron-left" />
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Tabs */}
-      <ul className="nav nav-tabs question-manager-tabs" role="tablist">
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'manage' ? 'active' : ''}`}
-            onClick={() => setActiveTab('manage')}
-            type="button"
-          >
-            <i className="bi bi-file-earmark-text me-2"></i>Manage by Exam
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'questionBank' ? 'active' : ''}`}
-            onClick={() => setActiveTab('questionBank')}
-            type="button"
-          >
-            <i className="bi bi-journal-text me-2"></i>Question Bank
-          </button>
-        </li>
-        <li className="nav-item" role="presentation">
-          <button
-            className={`nav-link ${activeTab === 'stats' ? 'active' : ''}`}
-            onClick={() => setActiveTab('stats')}
-            type="button"
-          >
-            <i className="bi bi-graph-up me-2"></i>Statistics
-          </button>
-        </li>
-      </ul>
+        <nav className="qm-sidebar-nav">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              className={`qm-sidebar-nav-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab(item.key);
+                if (window.innerWidth < 768) setSidebarOpen(false);
+              }}
+              title={!sidebarOpen ? item.label : undefined}
+            >
+              <i className={`bi ${item.icon}`} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
 
-      {/* Manage by Exam Tab */}
-      {activeTab === 'manage' && (
-        <div>
-          <div className="card exam-selector-section">
-            <div className="card-body">
-              <h3 className="mb-3">
-                <i className="bi bi-funnel me-2"></i>Select Exam
-              </h3>
-              {exams.length === 0 ? (
-                <div className="alert alert-info">
-                  <i className="bi bi-info-circle me-2"></i>
-                  No exams available. Ask Exam Manager to create exams first.
-                </div>
-              ) : (
-                <select
-                  className="form-select"
-                  value={selectedExamId}
-                  onChange={(e) => {
-                    setSelectedExamId(e.target.value);
-                    if (!e.target.value) {
-                      setQuestions([]);
-                      setEditMode(false);
-                      setEditingQuestion(null);
-                    }
-                  }}
-                  style={{ maxWidth: '400px' }}
-                >
-                  <option value="">-- Select an Exam --</option>
-                  {exams.map((exam) => (
-                    <option key={exam._id} value={exam._id}>
-                      {exam.exam_name}
-                    </option>
-                  ))}
-                </select>
-              )}
+        <div className="qm-sidebar-footer">
+          <button
+            className="qm-sidebar-nav-item qm-sidebar-logout-btn"
+            onClick={logout}
+            title={!sidebarOpen ? 'Logout' : undefined}
+          >
+            <i className="bi bi-box-arrow-left" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile overlay ── */}
+      <div
+        className={`qm-sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* ── Main area ── */}
+      <div className={`qm-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+        {/* Top bar */}
+        <header className="qm-topbar">
+          {!sidebarOpen && (
+            <button className="qm-expand-btn" onClick={() => setSidebarOpen(true)}>
+              <i className="bi bi-chevron-right" />
+            </button>
+          )}
+          <button className="qm-mobile-menu-btn" onClick={() => setSidebarOpen(true)}>
+            <i className="bi bi-list" />
+          </button>
+          <div className="qm-topbar-title">
+            <h1>{NAV_ITEMS.find((n) => n.key === activeTab)?.label}</h1>
+          </div>
+          <div className="qm-topbar-actions">
+            <div className="qm-topbar-user-chip">
+              <div className="qm-topbar-avatar" title={user?.full_name || 'User'}>
+                {user?.full_name?.charAt(0)?.toUpperCase() || 'Q'}
+              </div>
+              <div className="qm-topbar-user-info">
+                <span className="qm-topbar-username">{user?.full_name || 'Question Manager'}</span>
+                <span className="qm-topbar-role">{user?.role}</span>
+              </div>
             </div>
           </div>
+        </header>
 
-          {!editMode ? (
-            <div className="card question-form-card">
-              <h3>
-                <i className="bi bi-plus-circle me-2"></i>Add Question
-              </h3>
-              <form onSubmit={handleCreate}>
-                    <div className="mb-3">
+        {/* Content */}
+        <div className="qm-content">
+          {/* Error alert */}
+          {error && (
+            <div className="qm-alert qm-alert-danger">
+              <i className="bi bi-exclamation-triangle-fill" />
+              <span>{error}</span>
+              <button onClick={() => setError('')}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+          )}
+
+          {/* ═══ MANAGE BY EXAM TAB ═══ */}
+          {activeTab === 'manage' && (
+            <>
+              {/* Exam selector */}
+              <div className="qm-glass-card" style={{ marginBottom: '1.25rem' }}>
+                <div className="qm-glass-card-header">
+                  <h3><i className="bi bi-funnel" /> Select Exam</h3>
+                </div>
+                {exams.length === 0 ? (
+                  <div className="qm-empty">
+                    <i className="bi bi-info-circle" />
+                    <p>No exams available. Ask Exam Manager to create exams first.</p>
+                  </div>
+                ) : (
+                  <select
+                    className="form-select"
+                    value={selectedExamId}
+                    onChange={(e) => {
+                      setSelectedExamId(e.target.value);
+                      if (!e.target.value) {
+                        setQuestions([]);
+                        setEditMode(false);
+                        setEditingQuestion(null);
+                      }
+                    }}
+                    style={{ maxWidth: '400px' }}
+                  >
+                    <option value="">-- Select an Exam --</option>
+                    {exams.map((exam) => (
+                      <option key={exam._id} value={exam._id}>{exam.exam_name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Add / Edit question form */}
+              {!editMode ? (
+                <div className="qm-glass-card" style={{ marginBottom: '1.25rem' }}>
+                  <div className="qm-glass-card-header">
+                    <h3><i className="bi bi-plus-circle" /> Add Question</h3>
+                  </div>
+                  <form onSubmit={handleCreate}>
+                    <div className="qm-form-group">
                       <label htmlFor="question_text" className="form-label">Question Text</label>
                       <textarea
                         className="form-control"
@@ -403,86 +455,49 @@ const QuestionManagerDashboard = () => {
                         rows={3}
                       />
                     </div>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
+                    <div className="qm-form-row">
+                      <div className="qm-form-group">
                         <label htmlFor="option1" className="form-label">Option 1</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="option1"
-                          name="option1"
-                          value={form.option1}
-                          onChange={handleChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="option1" name="option1" value={form.option1} onChange={handleChange} required />
                       </div>
-                      <div className="col-md-6 mb-3">
+                      <div className="qm-form-group">
                         <label htmlFor="option2" className="form-label">Option 2</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="option2"
-                          name="option2"
-                          value={form.option2}
-                          onChange={handleChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="option2" name="option2" value={form.option2} onChange={handleChange} required />
                       </div>
                     </div>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
+                    <div className="qm-form-row">
+                      <div className="qm-form-group">
                         <label htmlFor="option3" className="form-label">Option 3</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="option3"
-                          name="option3"
-                          value={form.option3}
-                          onChange={handleChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="option3" name="option3" value={form.option3} onChange={handleChange} required />
                       </div>
-                      <div className="col-md-6 mb-3">
+                      <div className="qm-form-group">
                         <label htmlFor="option4" className="form-label">Option 4</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="option4"
-                          name="option4"
-                          value={form.option4}
-                          onChange={handleChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="option4" name="option4" value={form.option4} onChange={handleChange} required />
                       </div>
                     </div>
-                    <div className="mb-3">
+                    <div className="qm-form-group">
                       <label htmlFor="correct_option" className="form-label">Correct Option</label>
-                      <select
-                        className="form-select"
-                        id="correct_option"
-                        name="correct_option"
-                        value={form.correct_option}
-                        onChange={handleChange}
-                        style={{ maxWidth: '200px' }}
-                      >
+                      <select className="form-select" id="correct_option" name="correct_option" value={form.correct_option} onChange={handleChange} style={{ maxWidth: '200px' }}>
                         <option value={1}>Option 1</option>
                         <option value={2}>Option 2</option>
                         <option value={3}>Option 3</option>
                         <option value={4}>Option 4</option>
                       </select>
                     </div>
-                    <button type="submit" className="btn btn-primary">
-                      <i className="bi bi-plus-circle me-2"></i>Add Question
-                    </button>
+                    <div className="qm-form-actions">
+                      <button type="submit" className="btn-qm-primary">
+                        <i className="bi bi-plus-circle" /> Add Question
+                      </button>
+                    </div>
                   </form>
                 </div>
               ) : (
-                <div className="card question-form-card edit-mode">
-                  <h3>
-                    <i className="bi bi-pencil-square me-2"></i>Edit Question
-                  </h3>
+                <div className="qm-glass-card qm-edit-mode" style={{ marginBottom: '1.25rem' }}>
+                  <div className="qm-glass-card-header">
+                    <h3><i className="bi bi-pencil-square" /> Edit Question</h3>
+                  </div>
                   <form onSubmit={handleUpdate}>
-                    <div className="mb-3">
+                    <div className="qm-form-group">
                       <label htmlFor="edit_question_text" className="form-label">Question Text</label>
                       <textarea
                         className="form-control"
@@ -494,271 +509,97 @@ const QuestionManagerDashboard = () => {
                         rows={3}
                       />
                     </div>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
+                    <div className="qm-form-row">
+                      <div className="qm-form-group">
                         <label htmlFor="edit_option1" className="form-label">Option 1</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="edit_option1"
-                          name="option1"
-                          value={editForm.option1}
-                          onChange={handleEditChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="edit_option1" name="option1" value={editForm.option1} onChange={handleEditChange} required />
                       </div>
-                      <div className="col-md-6 mb-3">
+                      <div className="qm-form-group">
                         <label htmlFor="edit_option2" className="form-label">Option 2</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="edit_option2"
-                          name="option2"
-                          value={editForm.option2}
-                          onChange={handleEditChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="edit_option2" name="option2" value={editForm.option2} onChange={handleEditChange} required />
                       </div>
                     </div>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
+                    <div className="qm-form-row">
+                      <div className="qm-form-group">
                         <label htmlFor="edit_option3" className="form-label">Option 3</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="edit_option3"
-                          name="option3"
-                          value={editForm.option3}
-                          onChange={handleEditChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="edit_option3" name="option3" value={editForm.option3} onChange={handleEditChange} required />
                       </div>
-                      <div className="col-md-6 mb-3">
+                      <div className="qm-form-group">
                         <label htmlFor="edit_option4" className="form-label">Option 4</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="edit_option4"
-                          name="option4"
-                          value={editForm.option4}
-                          onChange={handleEditChange}
-                          required
-                        />
+                        <input type="text" className="form-control" id="edit_option4" name="option4" value={editForm.option4} onChange={handleEditChange} required />
                       </div>
                     </div>
-                    <div className="mb-3">
+                    <div className="qm-form-group">
                       <label htmlFor="edit_correct_option" className="form-label">Correct Option</label>
-                      <select
-                        className="form-select"
-                        id="edit_correct_option"
-                        name="correct_option"
-                        value={editForm.correct_option}
-                        onChange={handleEditChange}
-                        style={{ maxWidth: '200px' }}
-                      >
+                      <select className="form-select" id="edit_correct_option" name="correct_option" value={editForm.correct_option} onChange={handleEditChange} style={{ maxWidth: '200px' }}>
                         <option value={1}>Option 1</option>
                         <option value={2}>Option 2</option>
                         <option value={3}>Option 3</option>
                         <option value={4}>Option 4</option>
                       </select>
                     </div>
-                    <div className="d-flex gap-2">
-                      <button type="submit" className="btn btn-success">
-                        <i className="bi bi-check-circle me-2"></i>Save Changes
+                    <div className="qm-form-actions">
+                      <button type="submit" className="btn-qm-success">
+                        <i className="bi bi-check-circle" /> Save Changes
                       </button>
                       <button
                         type="button"
-                        className="btn btn-secondary"
-                        onClick={() => {
-                          setEditMode(false);
-                          setEditingQuestion(null);
-                        }}
+                        className="btn-qm-secondary"
+                        onClick={() => { setEditMode(false); setEditingQuestion(null); }}
                       >
-                        <i className="bi bi-x-circle me-2"></i>Cancel
+                        <i className="bi bi-x-circle" /> Cancel
                       </button>
                     </div>
                   </form>
                 </div>
               )}
 
-          {selectedExamId && (
-            <div className="card question-table-container">
-              <div className="card-header">
-                <h3 className="mb-0">
-                  <i className="bi bi-list-ul me-2"></i>Questions for Selected Exam ({questions.length})
-                </h3>
-              </div>
-              <div className="card-body">
-                {loading ? (
-                  <div className="loading-container">
-                      <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
+              {/* Questions table */}
+              {selectedExamId && (
+                <div className="qm-glass-card">
+                  <div className="qm-glass-card-header">
+                    <h3><i className="bi bi-list-ul" /> Questions for Selected Exam ({questions.length})</h3>
+                  </div>
+                  {loading ? (
+                    <div className="qm-loading"><div className="qm-spinner" /></div>
+                  ) : questions.length === 0 ? (
+                    <div className="qm-empty">
+                      <i className="bi bi-inbox" />
+                      <p>No questions yet. Add your first question above.</p>
                     </div>
-                  </div>
-                ) : questions.length === 0 ? (
-                  <div className="empty-container">
-                    <i className="bi bi-inbox"></i>
-                    <p>No questions yet. Add your first question above.</p>
-                  </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '40%' }}>Question</th>
-                          <th style={{ width: '35%' }}>Options</th>
-                          <th style={{ width: '10%' }}>Correct</th>
-                          <th style={{ width: '15%' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {questions.map((q) => (
-                          <tr key={q._id} className={editingQuestion === q._id ? 'question-row-editing' : ''}>
-                            <td>{q.question_text}</td>
-                            <td>
-                              <div className="option-list">
-                                <div className="option-item">1. {q.option1}</div>
-                                <div className="option-item">2. {q.option2}</div>
-                                <div className="option-item">3. {q.option3}</div>
-                                <div className="option-item">4. {q.option4}</div>
-                              </div>
-                            </td>
-                            <td>
-                              <span className="correct-option-badge">{q.correct_option}</span>
-                            </td>
-                            <td>
-                              <div className="table-actions">
-                                <button
-                                  className="btn btn-sm btn-primary"
-                                  onClick={() => handleEdit(q)}
-                                >
-                                  <i className="bi bi-pencil me-1"></i>Edit
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => handleDelete(q._id)}
-                                >
-                                  <i className="bi bi-trash me-1"></i>Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Question Bank Tab */}
-      {activeTab === 'questionBank' && (
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <div className="question-bank-header">
-                <h3 className="mb-0">
-                  <i className="bi bi-journal-text me-2"></i>All Questions ({filteredQuestions.length})
-                </h3>
-                <div className="input-group question-bank-search">
-                  <span className="input-group-text">
-                    <i className="bi bi-search"></i>
-                  </span>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search questions, options, or exam name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="loading-container">
-                      <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </div>
-          ) : filteredQuestions.length === 0 ? (
-            <div className="card">
-              <div className="card-body">
-                <div className="empty-container">
-                  <i className="bi bi-inbox"></i>
-                  <p>No questions found{searchTerm && ` matching "${searchTerm}"`}.</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              {sortedExamNames.map((examName) => {
-                const questions = groupedQuestions[examName];
-                return (
-                  <div key={examName} className="question-group">
-                    <div className="question-group-header">
-                      <span>{examName}</span>
-                      <span className="question-group-count">
-                        {questions.length} question{questions.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <div className="table-responsive">
-                      <table className="table table-hover question-group-table mb-0">
+                  ) : (
+                    <div className="qm-table-wrapper">
+                      <table className="table">
                         <thead>
                           <tr>
                             <th style={{ width: '40%' }}>Question</th>
-                            <th style={{ width: '30%' }}>Options</th>
-                            <th style={{ width: '8%' }}>Correct</th>
-                            <th style={{ width: '12%' }}>Created</th>
-                            <th style={{ width: '10%' }}>Actions</th>
+                            <th style={{ width: '35%' }}>Options</th>
+                            <th style={{ width: '10%' }}>Correct</th>
+                            <th style={{ width: '15%' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {questions.map((q) => (
-                            <tr key={q._id} className={editingQuestion === q._id ? 'question-row-editing' : ''}>
+                            <tr key={q._id} className={editingQuestion === q._id ? 'qm-row-editing' : ''}>
                               <td>{q.question_text}</td>
                               <td>
-                                <div className="option-list">
-                                  <div className="option-item">1. {q.option1}</div>
-                                  <div className="option-item">2. {q.option2}</div>
-                                  <div className="option-item">3. {q.option3}</div>
-                                  <div className="option-item">4. {q.option4}</div>
+                                <div className="qm-option-list">
+                                  <div className="qm-option-item">1. {q.option1}</div>
+                                  <div className="qm-option-item">2. {q.option2}</div>
+                                  <div className="qm-option-item">3. {q.option3}</div>
+                                  <div className="qm-option-item">4. {q.option4}</div>
                                 </div>
                               </td>
                               <td>
-                                <span className="correct-option-badge">{q.correct_option}</span>
+                                <span className="qm-correct-badge">{q.correct_option}</span>
                               </td>
-                              <td>{new Date(q.createdAt).toLocaleDateString('en-GB')}</td>
                               <td>
-                                <div className="table-actions">
-                                  <button
-                                    className="btn btn-sm btn-primary"
-                                    onClick={() => {
-                                      setEditingQuestion(q._id);
-                                      setEditForm({
-                                        question_text: q.question_text,
-                                        option1: q.option1,
-                                        option2: q.option2,
-                                        option3: q.option3,
-                                        option4: q.option4,
-                                        correct_option: q.correct_option,
-                                      });
-                                      setSelectedExamId(q.exam_id?._id || '');
-                                      setActiveTab('manage');
-                                      setEditMode(true);
-                                    }}
-                                  >
-                                    <i className="bi bi-pencil me-1"></i>Edit
+                                <div className="qm-table-actions">
+                                  <button className="btn-qm-primary btn-qm-sm" onClick={() => handleEdit(q)}>
+                                    <i className="bi bi-pencil" /> Edit
                                   </button>
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() => handleDelete(q._id)}
-                                  >
-                                    <i className="bi bi-trash me-1"></i>Delete
+                                  <button className="btn-qm-danger btn-qm-sm" onClick={() => handleDelete(q._id)}>
+                                    <i className="bi bi-trash" /> Delete
                                   </button>
                                 </div>
                               </td>
@@ -767,48 +608,167 @@ const QuestionManagerDashboard = () => {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
-        </div>
-      )}
 
-      {/* Statistics Tab */}
-      {activeTab === 'stats' && (
-        <div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="mb-0">
-                <i className="bi bi-graph-up-arrow me-2"></i>Question Bank Statistics
-              </h3>
-            </div>
-            <div className="card-body">
-              {statsLoading ? (
-                <div className="loading-container">
-                      <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
+          {/* ═══ QUESTION BANK TAB ═══ */}
+          {activeTab === 'questionBank' && (
+            <>
+              {/* Search bar */}
+              <div className="qm-glass-card" style={{ marginBottom: '1.25rem' }}>
+                <div className="qm-bank-header">
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <i className="bi bi-journal-text" style={{ color: 'var(--accent-1)' }} />
+                    All Questions ({filteredQuestions.length})
+                  </h3>
+                  <div className="qm-bank-search">
+                    <i className="bi bi-search qm-search-icon" />
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search questions, options, or exam name..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                   </div>
                 </div>
+              </div>
+
+              {loading ? (
+                <div className="qm-loading"><div className="qm-spinner" /></div>
+              ) : filteredQuestions.length === 0 ? (
+                <div className="qm-glass-card">
+                  <div className="qm-empty">
+                    <i className="bi bi-inbox" />
+                    <p>No questions found{searchTerm && ` matching "${searchTerm}"`}.</p>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {sortedExamNames.map((examName) => {
+                    const qs = groupedQuestions[examName];
+                    return (
+                      <div key={examName} className="qm-question-group">
+                        <div className="qm-group-header">
+                          <span>{examName}</span>
+                          <span className="qm-group-count">
+                            {qs.length} question{qs.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div className="qm-table-wrapper">
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '40%' }}>Question</th>
+                                <th style={{ width: '30%' }}>Options</th>
+                                <th style={{ width: '8%' }}>Correct</th>
+                                <th style={{ width: '12%' }}>Created</th>
+                                <th style={{ width: '10%' }}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {qs.map((q) => (
+                                <tr key={q._id} className={editingQuestion === q._id ? 'qm-row-editing' : ''}>
+                                  <td>{q.question_text}</td>
+                                  <td>
+                                    <div className="qm-option-list">
+                                      <div className="qm-option-item">1. {q.option1}</div>
+                                      <div className="qm-option-item">2. {q.option2}</div>
+                                      <div className="qm-option-item">3. {q.option3}</div>
+                                      <div className="qm-option-item">4. {q.option4}</div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span className="qm-correct-badge">{q.correct_option}</span>
+                                  </td>
+                                  <td>{new Date(q.createdAt).toLocaleDateString('en-GB')}</td>
+                                  <td>
+                                    <div className="qm-table-actions">
+                                      <button
+                                        className="btn-qm-primary btn-qm-sm"
+                                        onClick={() => {
+                                          setEditingQuestion(q._id);
+                                          setEditForm({
+                                            question_text: q.question_text,
+                                            option1: q.option1,
+                                            option2: q.option2,
+                                            option3: q.option3,
+                                            option4: q.option4,
+                                            correct_option: q.correct_option,
+                                          });
+                                          setSelectedExamId(q.exam_id?._id || '');
+                                          setActiveTab('manage');
+                                          setEditMode(true);
+                                        }}
+                                      >
+                                        <i className="bi bi-pencil" /> Edit
+                                      </button>
+                                      <button className="btn-qm-danger btn-qm-sm" onClick={() => handleDelete(q._id)}>
+                                        <i className="bi bi-trash" /> Delete
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ═══ STATISTICS TAB ═══ */}
+          {activeTab === 'stats' && (
+            <div className="qm-glass-card">
+              <div className="qm-glass-card-header">
+                <h3><i className="bi bi-graph-up-arrow" /> Question Bank Statistics</h3>
+              </div>
+              {statsLoading ? (
+                <div className="qm-loading"><div className="qm-spinner" /></div>
               ) : stats ? (
-                <div>
-                  <div className="stats-card">
-                    <div className="stats-card-label">Total Questions</div>
-                    <div className="stats-card-value">{stats.totalQuestions}</div>
+                <>
+                  {/* Stat cards */}
+                  <div className="qm-stats-grid">
+                    <div className="qm-stat-card">
+                      <div className="qm-stat-icon primary">
+                        <i className="bi bi-question-circle-fill" />
+                      </div>
+                      <div className="qm-stat-info">
+                        <span className="qm-stat-label">Total Questions</span>
+                        <span className="qm-stat-value">{stats.totalQuestions}</span>
+                      </div>
+                    </div>
+                    <div className="qm-stat-card">
+                      <div className="qm-stat-icon info">
+                        <i className="bi bi-file-earmark-text-fill" />
+                      </div>
+                      <div className="qm-stat-info">
+                        <span className="qm-stat-label">Exams with Questions</span>
+                        <span className="qm-stat-value">{stats.questionsByExam?.length || 0}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <h4 className="mt-4 mb-3">
-                    <i className="bi bi-list-ul me-2"></i>Questions by Exam
+                  {/* Questions by Exam table */}
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <i className="bi bi-list-ul" style={{ color: 'var(--accent-1)' }} />
+                    Questions by Exam
                   </h4>
                   {stats.questionsByExam.length === 0 ? (
-                    <div className="alert alert-info">
-                      <i className="bi bi-info-circle me-2"></i>
-                      No questions found in any exam.
+                    <div className="qm-empty">
+                      <i className="bi bi-info-circle" />
+                      <p>No questions found in any exam.</p>
                     </div>
                   ) : (
-                    <div className="table-responsive">
-                      <table className="table table-hover">
+                    <div className="qm-table-wrapper">
+                      <table className="table">
                         <thead>
                           <tr>
                             <th>Exam Name</th>
@@ -818,11 +778,9 @@ const QuestionManagerDashboard = () => {
                         <tbody>
                           {stats.questionsByExam.map((item, idx) => (
                             <tr key={idx}>
-                              <td><strong>{item.examName || 'Unknown Exam'}</strong></td>
+                              <td><strong style={{ color: 'var(--text)' }}>{item.examName || 'Unknown Exam'}</strong></td>
                               <td>
-                                <span className="badge bg-primary" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
-                                  {item.count}
-                                </span>
+                                <span className="qm-count-badge">{item.count}</span>
                               </td>
                             </tr>
                           ))}
@@ -830,17 +788,17 @@ const QuestionManagerDashboard = () => {
                       </table>
                     </div>
                   )}
-                </div>
+                </>
               ) : (
-                <div className="empty-container">
-                  <i className="bi bi-exclamation-triangle"></i>
+                <div className="qm-empty">
+                  <i className="bi bi-exclamation-triangle" />
                   <p>Failed to load statistics.</p>
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

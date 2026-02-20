@@ -4,9 +4,16 @@ import '../styles/StudentDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
+const NAV_ITEMS = [
+  { key: 'exams',    icon: 'bi-file-earmark-text-fill', label: 'Available Exams' },
+  { key: 'results',  icon: 'bi-clipboard-check-fill',   label: 'My Results' },
+  { key: 'feedback', icon: 'bi-chat-left-text-fill',   label: 'Feedback' },
+];
+
 const StudentDashboard = () => {
-  const { token } = useAuth();
+  const { token, user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('exams');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [exams, setExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -415,50 +422,108 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard">
-      <div className="dashboard-header">
-        <h2><i className="bi bi-mortarboard"></i> Student Dashboard</h2>
+      {/* ── Background blobs ── */}
+      <div className="student-bg-effects">
+        <div className="student-blob student-blob-1" />
+        <div className="student-blob student-blob-2" />
+        <div className="student-blob student-blob-3" />
       </div>
 
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
-        </div>
+      {/* ── Sidebar ── */}
+      {!selectedExam && (
+        <>
+          <aside className={`student-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
+            <div className="sidebar-header">
+              <div className="sidebar-logo">
+                <i className="bi bi-mortarboard-fill" />
+                <span className="sidebar-logo-text">Student Portal</span>
+              </div>
+              {sidebarOpen && (
+                <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)}>
+                  <i className="bi bi-chevron-left" />
+                </button>
+              )}
+            </div>
+
+            <nav className="sidebar-nav">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.key}
+                  className={`sidebar-nav-item ${activeTab === item.key ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab(item.key);
+                    if (window.innerWidth < 768) setSidebarOpen(false);
+                  }}
+                  title={!sidebarOpen ? item.label : undefined}
+                >
+                  <i className={`bi ${item.icon}`} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="sidebar-footer">
+              <button
+                className="sidebar-nav-item sidebar-logout-btn"
+                onClick={logout}
+                title={!sidebarOpen ? 'Logout' : undefined}
+              >
+                <i className="bi bi-box-arrow-left" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </aside>
+
+          {/* ── Mobile overlay ── */}
+          <div
+            className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+            onClick={() => setSidebarOpen(false)}
+          />
+        </>
       )}
 
-      {/* Tabs */}
-      {!selectedExam && (
-        <ul className="nav nav-tabs student-tabs" role="tablist">
-          <li className="nav-item" role="presentation">
-            <button
-              className={`nav-link ${activeTab === 'exams' ? 'active' : ''}`}
-              onClick={() => setActiveTab('exams')}
-              type="button"
-            >
-              <i className="bi bi-file-earmark-text me-2"></i>Available Exams
+      {/* ── Main area ── */}
+      <div className={`student-main ${!selectedExam && !sidebarOpen ? 'sidebar-collapsed' : ''} ${selectedExam ? 'exam-mode' : ''}`}>
+        {/* Top bar */}
+        {!selectedExam && (
+          <header className="student-topbar">
+            {!sidebarOpen && (
+              <button className="sidebar-expand-btn" onClick={() => setSidebarOpen(true)}>
+                <i className="bi bi-chevron-right" />
+              </button>
+            )}
+            <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>
+              <i className="bi bi-list" />
             </button>
-          </li>
-          <li className="nav-item" role="presentation">
-            <button
-              className={`nav-link ${activeTab === 'results' ? 'active' : ''}`}
-              onClick={() => setActiveTab('results')}
-              type="button"
-            >
-              <i className="bi bi-clipboard-check me-2"></i>My Results
-            </button>
-          </li>
-          <li className="nav-item" role="presentation">
-            <button
-              className={`nav-link ${activeTab === 'feedback' ? 'active' : ''}`}
-              onClick={() => setActiveTab('feedback')}
-              type="button"
-            >
-              <i className="bi bi-chat-left-text me-2"></i>Feedback
-            </button>
-          </li>
-        </ul>
-      )}
+            <div className="topbar-title">
+              <h1>{NAV_ITEMS.find((n) => n.key === activeTab)?.label || 'Student Dashboard'}</h1>
+            </div>
+            <div className="topbar-actions">
+              <div className="topbar-user-chip">
+                <div className="topbar-avatar" title={user?.full_name || 'Student'}>
+                  {user?.full_name?.charAt(0)?.toUpperCase() || 'S'}
+                </div>
+                <div className="topbar-user-info">
+                  <span className="topbar-username">{user?.full_name || 'Student'}</span>
+                  <span className="topbar-role">{user?.role}</span>
+                </div>
+              </div>
+            </div>
+          </header>
+        )}
+
+        {/* Content */}
+        <div className="student-content">
+          {/* Error alert */}
+          {error && (
+            <div className="student-alert student-alert-danger">
+              <i className="bi bi-exclamation-triangle-fill" />
+              <span>{error}</span>
+              <button onClick={() => setError('')}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+          )}
 
       {/* Exam Taking View */}
       {selectedExam && !result && (
@@ -694,7 +759,8 @@ const StudentDashboard = () => {
           <div className="card">
             <div className="card-header">
               <h3 className="mb-0">
-                <i className="bi bi-clipboard-check me-2"></i>My Results
+                <i className="bi bi-file-earmark-text-fill me-2" style={{ color: '#8b5cf6' }}></i>
+                My Results ({myResults.length})
               </h3>
             </div>
             <div className="card-body">
@@ -803,15 +869,18 @@ const StudentDashboard = () => {
                       <p>No exam attempts yet. Start taking exams from the "Available Exams" tab!</p>
                     </div>
                   ) : (
-                    <div className="table-responsive">
-                      <table className="table table-hover">
+                    <div className="table-responsive results-table-wrapper">
+                      <table className="table results-table">
                         <thead>
                           <tr>
-                            <th>Exam</th>
-                            <th>Score</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <th>EXAM NAME</th>
+                            <th>CREATED BY</th>
+                            <th>START TIME</th>
+                            <th>END TIME</th>
+                            <th>DURATION (MIN)</th>
+                            <th>STATUS</th>
+                            <th>CREATED</th>
+                            <th>ACTIONS</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -830,43 +899,71 @@ const StudentDashboard = () => {
                             const isPassing = att.is_passed !== undefined 
                               ? att.is_passed 
                               : (percentage !== null && percentage >= 40);
+                            
+                            // Calculate duration in minutes
+                            const durationMinutes = att.exam_id?.duration || 0;
+                            
+                            // Format dates
+                            const startTime = att.start_time ? new Date(att.start_time).toLocaleString('en-GB') : '-';
+                            const endTime = att.end_time ? new Date(att.end_time).toLocaleString('en-GB') : '-';
+                            const createdDate = att.createdAt ? new Date(att.createdAt).toLocaleDateString('en-GB') : '-';
 
                             return (
                               <tr key={att._id}>
-                                <td>{att.exam_id?.exam_name || 'N/A'}</td>
                                 <td>
-                                  {att.completed ? (
-                                    <div>
-                                      <strong className={`score-display ${isPassing ? 'score-pass' : 'score-fail'}`}>
+                                  <strong>{att.exam_id?.exam_name || 'N/A'}</strong>
+                                  {att.completed && (
+                                    <div className="mt-1">
+                                      <span className={`score-display ${isPassing ? 'score-pass' : 'score-fail'}`} style={{ fontSize: '0.875rem' }}>
                                         {scoreDisplay}
-                                      </strong>
+                                      </span>
                                       {percentage !== null && (
-                                        <span className="text-muted ms-2" style={{ fontSize: '0.85rem' }}>
+                                        <span className="text-muted ms-2" style={{ fontSize: '0.8rem' }}>
                                           ({percentage}%)
                                         </span>
                                       )}
                                     </div>
-                                  ) : (
-                                    '-'
                                   )}
                                 </td>
                                 <td>
-                                  <span className={`status-badge ${att.completed ? 'status-completed' : 'status-pending'}`}>
-                                    <i className={`bi ${att.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
-                                    {att.completed ? 'Completed' : 'In Progress'}
-                                  </span>
+                                  {att.exam_id?.created_by ? (
+                                    <div>
+                                      <div>{att.exam_id.created_by.username || att.exam_id.created_by.full_name || 'N/A'}</div>
+                                      <div className="text-muted" style={{ fontSize: '0.85rem' }}>
+                                        {att.exam_id.created_by.email || ''}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    'N/A'
+                                  )}
                                 </td>
-                                <td>{new Date(att.createdAt).toLocaleString('en-GB')}</td>
+                                <td>{startTime}</td>
+                                <td>{endTime}</td>
+                                <td>{durationMinutes}</td>
+                                <td>
+                                  {att.completed ? (
+                                    <span className={`status-pill ${isPassing ? 'status-pass' : 'status-fail'}`}>
+                                      <i className={`bi ${isPassing ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                                      {isPassing ? 'Passed' : 'Failed'}
+                                    </span>
+                                  ) : (
+                                    <span className="status-pill status-pending">
+                                      <i className="bi bi-clock me-1"></i>
+                                      In Progress
+                                    </span>
+                                  )}
+                                </td>
+                                <td>{createdDate}</td>
                                 <td>
                                   {att.completed ? (
                                     <button
                                       className="btn btn-sm btn-info"
                                       onClick={() => setSelectedResult(att._id)}
                                     >
-                                      <i className="bi bi-eye me-1"></i>View Details
+                                      <i className="bi bi-eye me-1"></i>View
                                     </button>
                                   ) : (
-                                    <span className="text-muted" style={{ fontSize: '0.85rem' }}>Not completed</span>
+                                    <span className="text-muted" style={{ fontSize: '0.85rem' }}>-</span>
                                   )}
                                 </td>
                               </tr>
@@ -982,6 +1079,8 @@ const StudentDashboard = () => {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

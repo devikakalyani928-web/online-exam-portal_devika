@@ -107,7 +107,14 @@ const getResultsByExam = async (req, res) => {
 const getMyResults = async (req, res) => {
   try {
     const attempts = await ExamAttempt.find({ student_id: req.user._id })
-      .populate('exam_id', 'exam_name start_time end_time duration')
+      .populate({
+        path: 'exam_id',
+        select: 'exam_name start_time end_time duration',
+        populate: {
+          path: 'created_by',
+          select: 'username full_name email'
+        }
+      })
       .sort({ createdAt: -1 });
     
     // Filter out attempts where exam_id is null (exam was deleted)
