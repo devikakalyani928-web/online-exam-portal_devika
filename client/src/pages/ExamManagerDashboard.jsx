@@ -134,28 +134,44 @@ const ExamManagerDashboard = () => {
 
   const validateExamForm = (formData, isEdit = false) => {
     const errors = {};
+    
+    // Exam name validation: only letters (no numbers, no special characters)
     if (!formData.exam_name || formData.exam_name.trim() === '') {
       errors.exam_name = 'Exam name is required.';
+    } else {
+      const examNameRegex = /^[a-zA-Z\s]+$/;
+      if (!examNameRegex.test(formData.exam_name.trim())) {
+        errors.exam_name = 'Exam name must contain only letters (no numbers or special characters).';
+      }
     }
+    
+    // Start time validation: not allow past dates (but allow today with any time)
     if (!formData.start_time) {
       errors.start_time = 'Start time is required.';
     } else if (!isEdit) {
       const startDate = new Date(formData.start_time);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startDateOnly = new Date(startDate);
-      startDateOnly.setHours(0, 0, 0, 0);
-      if (startDateOnly < today) {
+      const now = new Date();
+      // Compare only the date portion (year, month, day)
+      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      if (startDateOnly < todayOnly) {
         errors.start_time = 'Start date cannot be before today.';
       }
     }
+    
+    // End time validation: must be greater than start time
     if (!formData.end_time) {
       errors.end_time = 'End time is required.';
     } else if (formData.start_time) {
-      if (new Date(formData.end_time) <= new Date(formData.start_time)) {
-        errors.end_time = 'End time must be after start time.';
+      const startTime = new Date(formData.start_time);
+      const endTime = new Date(formData.end_time);
+      if (endTime <= startTime) {
+        errors.end_time = 'End time must be greater than start time.';
       }
     }
+    
+    // Duration validation
     const durationInMinutes = convertToMinutes(formData.duration, formData.durationUnit || 'minutes');
     if (!formData.duration || formData.duration < 1) {
       errors.duration = formData.durationUnit === 'hours'
@@ -164,6 +180,7 @@ const ExamManagerDashboard = () => {
     } else if (durationInMinutes > 1440) {
       errors.duration = 'Duration cannot exceed 24 hours (1440 minutes).';
     }
+    
     return errors;
   };
 

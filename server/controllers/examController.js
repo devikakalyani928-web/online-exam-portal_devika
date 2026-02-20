@@ -39,6 +39,11 @@ const getExams = async (req, res) => {
 
 // PUT /api/exams/:id
 const updateExam = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { id } = req.params;
   const { exam_name, start_time, end_time, duration } = req.body;
 
@@ -46,6 +51,15 @@ const updateExam = async (req, res) => {
     const exam = await Exam.findById(id);
     if (!exam) {
       return res.status(404).json({ message: 'Exam not found' });
+    }
+
+    // Validate end_time against start_time (either new or existing)
+    if (end_time !== undefined) {
+      const finalStartTime = start_time !== undefined ? new Date(start_time) : exam.start_time;
+      const finalEndTime = new Date(end_time);
+      if (finalEndTime <= finalStartTime) {
+        return res.status(400).json({ message: 'End time must be greater than start time' });
+      }
     }
 
     if (exam_name !== undefined) exam.exam_name = exam_name;
