@@ -369,7 +369,7 @@ const ResultManagerDashboard = () => {
                   <i className="bi bi-eye me-2"></i>Detailed Attempt View
                 </h3>
               </div>
-              <div className="card-body">
+              <div style={{ padding: '1.5rem' }}>
                 {detailsLoading ? (
                   <div className="rm-loading">
                     <div className="rm-spinner" />
@@ -383,56 +383,101 @@ const ResultManagerDashboard = () => {
                       const percentage = formatPercentage(percentageValue);
                       const isPassed = percentageValue >= 40;
                       return (
-                        <div className="attempt-details-header">
-                          <div className="row">
-                            {/* Left Column */}
-                            <div className="col-md-6">
-                              <div className="mb-3">
-                                <strong><i className="bi bi-file-earmark-text me-2"></i>Exam:</strong> {attemptDetails.attempt.exam_id?.exam_name}
+                        <div className="attempt-details-grid">
+                          {/* Left Column */}
+                          <div className="attempt-details-column">
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-file-earmark-text"></i>
+                                <span>Exam</span>
                               </div>
-                              <div className="mb-3">
-                                <strong><i className="bi bi-list-check me-2"></i>Total Marks:</strong> {totalMarks}
+                              <div className="attempt-details-value">{attemptDetails.attempt.exam_id?.exam_name || 'N/A'}</div>
+                            </div>
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-list-check"></i>
+                                <span>Total Marks</span>
                               </div>
-                              <div className="mb-3">
-                                <strong><i className="bi bi-trophy me-2"></i>Marks Obtained:</strong> {marksObtained}
+                              <div className="attempt-details-value">{totalMarks}</div>
+                            </div>
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-trophy"></i>
+                                <span>Marks Obtained</span>
                               </div>
-                              <div className="mb-3">
-                                <strong><i className="bi bi-percent me-2"></i>Percentage:</strong> {percentage}%
+                              <div className="attempt-details-value">{marksObtained}</div>
+                            </div>
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-percent"></i>
+                                <span>Percentage</span>
                               </div>
-                              <div className="mb-3">
-                                <strong><i className="bi bi-award me-2"></i>Result:</strong>{' '}
-                                <span className={`status-badge ${isPassed ? 'status-completed' : 'status-failed'}`}>
-                                  <i className={`bi ${isPassed ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                              <div className="attempt-details-value">{percentage}%</div>
+                            </div>
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-award"></i>
+                                <span>Result</span>
+                              </div>
+                              <div className="attempt-details-value">
+                                <span className={`rm-status-badge ${isPassed ? 'rm-status-passed' : 'rm-status-failed'}`}>
+                                  <i className={`bi ${isPassed ? 'bi-check-circle' : 'bi-x-circle'}`}></i>
                                   {isPassed ? 'Passed' : 'Failed'}
                                 </span>
                               </div>
                             </div>
-                            {/* Right Column */}
-                            <div className="col-md-6">
-                              <div className="mb-3">
-                                <strong><i className="bi bi-person me-2"></i>Student:</strong> {attemptDetails.attempt.student_id?.full_name} ({attemptDetails.attempt.student_id?.email})
+                          </div>
+                          {/* Right Column */}
+                          <div className="attempt-details-column">
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-person"></i>
+                                <span>Student</span>
                               </div>
-                              <div className="mb-3">
-                                <strong><i className="bi bi-info-circle me-2"></i>Status:</strong>{' '}
-                                <span className={`status-badge ${attemptDetails.attempt.completed ? 'status-completed' : 'status-pending'}`}>
-                                  <i className={`bi ${attemptDetails.attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                              <div className="attempt-details-value">
+                                {attemptDetails.attempt.student_id?.full_name || 'N/A'}
+                                {attemptDetails.attempt.student_id?.email && (
+                                  <span className="attempt-details-email"> ({attemptDetails.attempt.student_id.email})</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-info-circle"></i>
+                                <span>Status</span>
+                              </div>
+                              <div className="attempt-details-value">
+                                <span className={`rm-status-badge ${attemptDetails.attempt.completed ? 'rm-status-completed' : 'rm-status-pending'}`}>
+                                  <i className={`bi ${attemptDetails.attempt.completed ? 'bi-check-circle' : 'bi-clock'}`}></i>
                                   {attemptDetails.attempt.completed ? 'Completed' : 'In Progress'}
                                 </span>
                               </div>
-                              <div className="mb-3">
-                                <strong><i className="bi bi-play-circle me-2"></i>Started:</strong> {new Date(attemptDetails.attempt.start_time).toLocaleString('en-GB')}
-                              </div>
-                              {attemptDetails.attempt.end_time && (
-                                <div className="mb-3">
-                                  <strong><i className="bi bi-check-circle me-2"></i>Submitted:</strong> {new Date(attemptDetails.attempt.end_time).toLocaleString('en-GB')}
-                                </div>
-                              )}
-                              {attemptDetails.attempt.end_time && (
-                                <div className="mb-3">
-                                  <strong><i className="bi bi-clock-history me-2"></i>Duration Taken:</strong> {formatDuration(attemptDetails.attempt.start_time, attemptDetails.attempt.end_time)}
-                                </div>
-                              )}
                             </div>
+                            <div className="attempt-details-item">
+                              <div className="attempt-details-label">
+                                <i className="bi bi-play-circle"></i>
+                                <span>Started</span>
+                              </div>
+                              <div className="attempt-details-value">{new Date(attemptDetails.attempt.start_time).toLocaleString('en-GB')}</div>
+                            </div>
+                            {attemptDetails.attempt.end_time && (
+                              <div className="attempt-details-item">
+                                <div className="attempt-details-label">
+                                  <i className="bi bi-check-circle"></i>
+                                  <span>Submitted</span>
+                                </div>
+                                <div className="attempt-details-value">{new Date(attemptDetails.attempt.end_time).toLocaleString('en-GB')}</div>
+                              </div>
+                            )}
+                            {attemptDetails.attempt.end_time && (
+                              <div className="attempt-details-item">
+                                <div className="attempt-details-label">
+                                  <i className="bi bi-clock-history"></i>
+                                  <span>Duration Taken</span>
+                                </div>
+                                <div className="attempt-details-value">{formatDuration(attemptDetails.attempt.start_time, attemptDetails.attempt.end_time)}</div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -447,25 +492,56 @@ const ResultManagerDashboard = () => {
                       const accuracy = formatPercentage(accuracyValue);
                       
                       return (
-                        <div className="performance-summary mt-4">
-                          <h4 className="mb-3">
-                            <i className="bi bi-graph-up me-2"></i>Performance Summary
+                        <div className="performance-summary">
+                          <h4 className="performance-summary-title">
+                            <i className="bi bi-graph-up"></i>
+                            <span>Performance Summary</span>
                           </h4>
-                          <div className="row">
-                            <div className="col-md-3 mb-2">
-                              <strong><i className="bi bi-list-ul me-2"></i>Total Questions:</strong> {totalQuestions}
+                          <div className="performance-summary-grid">
+                            <div className="performance-summary-item">
+                              <div className="performance-summary-icon">
+                                <i className="bi bi-list-ul"></i>
+                              </div>
+                              <div className="performance-summary-content">
+                                <div className="performance-summary-label">Total Questions</div>
+                                <div className="performance-summary-value">{totalQuestions}</div>
+                              </div>
                             </div>
-                            <div className="col-md-3 mb-2">
-                              <strong><i className="bi bi-check-circle-fill text-success me-2"></i>Correct Answers:</strong> {correctAnswers}
+                            <div className="performance-summary-item">
+                              <div className="performance-summary-icon performance-summary-icon-success">
+                                <i className="bi bi-check-circle-fill"></i>
+                              </div>
+                              <div className="performance-summary-content">
+                                <div className="performance-summary-label">Correct Answers</div>
+                                <div className="performance-summary-value" style={{ color: 'var(--green)' }}>{correctAnswers}</div>
+                              </div>
                             </div>
-                            <div className="col-md-3 mb-2">
-                              <strong><i className="bi bi-x-circle-fill text-danger me-2"></i>Wrong Answers:</strong> {wrongAnswers}
+                            <div className="performance-summary-item">
+                              <div className="performance-summary-icon performance-summary-icon-danger">
+                                <i className="bi bi-x-circle-fill"></i>
+                              </div>
+                              <div className="performance-summary-content">
+                                <div className="performance-summary-label">Wrong Answers</div>
+                                <div className="performance-summary-value" style={{ color: 'var(--red)' }}>{wrongAnswers}</div>
+                              </div>
                             </div>
-                            <div className="col-md-3 mb-2">
-                              <strong><i className="bi bi-dash-circle text-warning me-2"></i>Unanswered:</strong> {unanswered}
+                            <div className="performance-summary-item">
+                              <div className="performance-summary-icon performance-summary-icon-warning">
+                                <i className="bi bi-dash-circle"></i>
+                              </div>
+                              <div className="performance-summary-content">
+                                <div className="performance-summary-label">Unanswered</div>
+                                <div className="performance-summary-value" style={{ color: 'var(--amber)' }}>{unanswered}</div>
+                              </div>
                             </div>
-                            <div className="col-md-12 mb-2">
-                              <strong><i className="bi bi-speedometer2 me-2"></i>Accuracy:</strong> {accuracy}%
+                            <div className="performance-summary-item performance-summary-item-full">
+                              <div className="performance-summary-icon">
+                                <i className="bi bi-speedometer2"></i>
+                              </div>
+                              <div className="performance-summary-content">
+                                <div className="performance-summary-label">Accuracy</div>
+                                <div className="performance-summary-value">{accuracy}%</div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -733,13 +809,13 @@ const ResultManagerDashboard = () => {
                 </div>
               ) : examReport ? (
                 <div>
-                  <div className="card exam-report-card">
-                    <div className="card-header">
+                  <div className="rm-glass-card" style={{ marginBottom: '1.5rem' }}>
+                    <div className="rm-glass-card-header">
                       <h3 className="mb-0">
                         <i className="bi bi-file-earmark-text me-2"></i>Exam Report: {examReport.exam.exam_name}
                       </h3>
                     </div>
-                    <div className="card-body">
+                    <div style={{ padding: '1.5rem' }}>
                       <div className="exam-report-stats">
                         <div className="exam-report-stat-item">
                           <strong>Total Questions:</strong>
@@ -751,11 +827,11 @@ const ResultManagerDashboard = () => {
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Completed:</strong>
-                          <span className="text-success">{examReport.statistics.completed}</span>
+                          <span style={{ color: 'var(--green)' }}>{examReport.statistics.completed}</span>
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Ongoing:</strong>
-                          <span className="text-warning">{examReport.statistics.ongoing}</span>
+                          <span style={{ color: 'var(--amber)' }}>{examReport.statistics.ongoing}</span>
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Average Score:</strong>
@@ -763,31 +839,31 @@ const ResultManagerDashboard = () => {
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Highest Score:</strong>
-                          <span className="text-success">{examReport.statistics.highestScore}</span>
+                          <span style={{ color: 'var(--green)' }}>{examReport.statistics.highestScore}</span>
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Lowest Score:</strong>
-                          <span className="text-danger">{examReport.statistics.lowestScore}</span>
+                          <span style={{ color: 'var(--red)' }}>{examReport.statistics.lowestScore}</span>
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Passed:</strong>
-                          <span className="text-success">{examReport.statistics.passCount}</span>
+                          <span style={{ color: 'var(--green)' }}>{examReport.statistics.passCount}</span>
                         </div>
                         <div className="exam-report-stat-item">
                           <strong>Failed:</strong>
-                          <span className="text-danger">{examReport.statistics.failCount}</span>
+                          <span style={{ color: 'var(--red)' }}>{examReport.statistics.failCount}</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="card">
+                  <div className="rm-glass-card">
                     <div className="rm-glass-card-header">
                       <h4 className="mb-0">
                         <i className="bi bi-list-check me-2"></i>All Attempts
                       </h4>
                     </div>
-                    <div className="card-body">
+                    <div style={{ padding: '0' }}>
                       {examReport.attempts.all.length === 0 ? (
                         <div className="rm-empty">
                           <i className="bi bi-inbox"></i>
@@ -795,46 +871,46 @@ const ResultManagerDashboard = () => {
                         </div>
                       ) : (
                         <div className="rm-table-wrapper">
-                          <table className="table table-hover">
+                          <table className="table">
                             <thead>
                               <tr>
-                                <th>Student</th>
-                                <th>Email</th>
-                                <th>Score</th>
-                                <th>Status</th>
-                                <th>Started</th>
-                                <th>Submitted</th>
+                                <th>STUDENT</th>
+                                <th>EMAIL</th>
+                                <th>SCORE</th>
+                                <th>STATUS</th>
+                                <th>STARTED</th>
+                                <th>SUBMITTED</th>
                               </tr>
                             </thead>
                             <tbody>
                               {examReport.attempts.all.map((attempt) => (
                                 <tr key={attempt._id}>
-                                  <td>{attempt.student_id?.full_name || attempt.student_id?.username}</td>
-                                  <td>{attempt.student_id?.email}</td>
+                                  <td style={{ color: 'var(--text)' }}>{attempt.student_id?.full_name || attempt.student_id?.username || 'N/A'}</td>
+                                  <td style={{ color: 'var(--text-secondary)' }}>{attempt.student_id?.email || 'N/A'}</td>
                                   <td>
-                                    <strong className={`score-display ${(() => {
-                                      if (!attempt.completed) return 'score-pending';
+                                    <strong className={`rm-score ${(() => {
+                                      if (!attempt.completed) return 'rm-score-pending';
                                       // Use stored is_passed if available, otherwise calculate with percentage >= 40
                                       if (attempt.is_passed !== undefined) {
-                                        return attempt.is_passed ? 'score-pass' : 'score-fail';
+                                        return attempt.is_passed ? 'rm-score-pass' : 'rm-score-fail';
                                       }
                                       // Fallback: calculate percentage
                                       const percentage = examReport.questions.total > 0 
                                         ? (attempt.total_score / examReport.questions.total) * 100 
                                         : 0;
-                                      return percentage >= 40 ? 'score-pass' : 'score-fail';
+                                      return percentage >= 40 ? 'rm-score-pass' : 'rm-score-fail';
                                     })()}`}>
                                       {attempt.completed ? `${attempt.total_score} / ${examReport.questions.total}` : '-'}
                                     </strong>
                                   </td>
                                   <td>
-                                    <span className={`status-badge ${attempt.completed ? 'status-completed' : 'status-pending'}`}>
-                                      <i className={`bi ${attempt.completed ? 'bi-check-circle' : 'bi-clock'} me-1`}></i>
+                                    <span className={`rm-status-badge ${attempt.completed ? 'rm-status-completed' : 'rm-status-pending'}`}>
+                                      <i className={`bi ${attempt.completed ? 'bi-check-circle' : 'bi-clock'}`} style={{ marginRight: '0.35rem' }}></i>
                                       {attempt.completed ? 'Completed' : 'In Progress'}
                                     </span>
                                   </td>
-                                  <td>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
-                                  <td>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
+                                  <td style={{ color: 'var(--text-secondary)' }}>{new Date(attempt.start_time).toLocaleString('en-GB')}</td>
+                                  <td style={{ color: 'var(--text-secondary)' }}>{attempt.end_time ? new Date(attempt.end_time).toLocaleString('en-GB') : '-'}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -845,7 +921,7 @@ const ResultManagerDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="empty-container">
+                <div className="rm-empty">
                   <i className="bi bi-exclamation-triangle"></i>
                   <p>Failed to load report.</p>
                 </div>

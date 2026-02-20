@@ -289,10 +289,16 @@ body:has(.rm-dashboard) .container-fluid {
   transition: margin-left var(--speed);
   position: relative;
   z-index: 1;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .rm-main.sidebar-collapsed {
   margin-left: var(--sidebar-w-sm);
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* =============================================
@@ -309,6 +315,9 @@ body:has(.rm-dashboard) .container-fluid {
   position: sticky;
   top: 0;
   z-index: 50;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .rm-expand-btn,
@@ -411,6 +420,17 @@ body:has(.rm-dashboard) .container-fluid {
   flex: 1;
   padding: 1.5rem;
   overflow-y: auto;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Ensure no blur on any content within main area */
+.rm-main *,
+.rm-content * {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* =============================================
@@ -518,9 +538,9 @@ body:has(.rm-dashboard) .container-fluid {
 
 .rm-dashboard .table thead th {
   background: rgba(255, 255, 255, 0.04);
-  color: var(--text-secondary);
+  color: var(--text);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.75px;
   padding: 0.85rem 1rem;
@@ -658,6 +678,12 @@ body:has(.rm-dashboard) .container-fluid {
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.rm-status-completed {
+  background: rgba(6, 182, 212, 0.15);
+  color: #67e8f9;
+  border: 1px solid rgba(6, 182, 212, 0.2);
 }
 
 /* =============================================
@@ -866,6 +892,229 @@ body:has(.rm-dashboard) .container-fluid {
   font-size: 1.1rem;
   font-weight: 700;
 }
+
+/* =============================================
+   Exam Report Styles
+   ============================================= */
+.exam-report-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.exam-report-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  transition: all var(--speed);
+}
+
+.exam-report-stat-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--glass-border-hover);
+}
+
+.exam-report-stat-item strong {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.exam-report-stat-item span {
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Score display styles */
+.rm-score {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.rm-score-pass {
+  color: var(--green);
+}
+
+.rm-score-fail {
+  color: var(--red);
+}
+
+.rm-score-pending {
+  color: var(--text-muted);
+}
+
+/* =============================================
+   Detailed Attempt View
+   ============================================= */
+.attempt-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.attempt-details-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.attempt-details-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.attempt-details-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.attempt-details-label i {
+  font-size: 0.9rem;
+  color: var(--accent-1);
+}
+
+.attempt-details-value {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.attempt-details-email {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Performance Summary */
+.performance-summary {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.performance-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.performance-summary-title i {
+  color: var(--accent-1);
+  font-size: 1.2rem;
+}
+
+.performance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.performance-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  transition: all var(--speed);
+}
+
+.performance-summary-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--glass-border-hover);
+}
+
+.performance-summary-item-full {
+  grid-column: 1 / -1;
+}
+
+.performance-summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--accent-1);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.performance-summary-icon-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green);
+}
+
+.performance-summary-icon-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--red);
+}
+
+.performance-summary-icon-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber);
+}
+
+.performance-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.performance-summary-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.performance-summary-value {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .attempt-details-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .performance-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-summary-item-full {
+    grid-column: 1;
+  }
+}
+
 
 /* =============================================
    Responsive — Mobile
