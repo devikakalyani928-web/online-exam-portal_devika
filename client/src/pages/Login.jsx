@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getDashboardRoute } from '../utils/roleRoutes';
+import AuthIllustration from '../assets/AuthIllustration';
 import '../styles/Auth.css';
 
 const Login = () => {
@@ -19,7 +20,6 @@ const Login = () => {
     setError('');
     try {
       const userData = await login(email, password);
-      // Redirect to role-specific dashboard
       const dashboardRoute = getDashboardRoute(userData.role);
       navigate(dashboardRoute);
     } catch (err) {
@@ -30,81 +30,73 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <i className="bi bi-box-arrow-in-right"></i>
-          <h2>Welcome Back</h2>
-          <p>Sign in to your account to continue</p>
+    <div className="auth-page">
+      <div className="auth-left">
+        <div className="auth-illustration">
+          <AuthIllustration />
         </div>
+      </div>
 
-        {error && (
-          <div className="alert alert-danger auth-alert" role="alert">
-            <i className="bi bi-exclamation-triangle-fill me-2"></i>
-            {error}
-          </div>
-        )}
+      <div className="auth-right">
+        {/* Decorative arcs */}
+        <div className="auth-arc auth-arc--1"></div>
+        <div className="auth-arc auth-arc--2"></div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="mb-3">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <input
-              type="email"
-              className="form-control"
-              id="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+        <div className="auth-card">
+          <h1 className="auth-title">Hello!</h1>
+          <p className="auth-subtitle">Sign Up to Get Started</p>
 
-          <div className="mb-3">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <div className="input-group">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                className="form-control"
-                id="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
-              </button>
+          {error && (
+            <div className="auth-error">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+              {error}
             </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="auth-field">
+              <div className="auth-input-wrapper">
+                <i className="bi bi-envelope auth-input-icon"></i>
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <div className="auth-input-wrapper">
+                <i className="bi bi-lock auth-input-icon"></i>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="auth-eye-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" className="auth-submit-btn" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+
+          <div className="auth-footer">
+            <span>Don&apos;t have an account?</span>
+            <Link to="/register">Sign up</Link>
           </div>
-
-          <button type="submit" className="btn auth-submit-btn" disabled={loading}>
-            {loading ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Logging in...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-box-arrow-in-right me-2"></i>
-                Login
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p className="mb-0">
-            Don't have an account? <Link to="/register">Create one here</Link>
-          </p>
         </div>
       </div>
     </div>

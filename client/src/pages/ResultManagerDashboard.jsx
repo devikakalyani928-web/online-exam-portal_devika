@@ -748,7 +748,11 @@ const ResultManagerDashboard = () => {
                                   <td>
                                     <strong className={`score-display ${(() => {
                                       if (!attempt.completed) return 'score-pending';
-                                      // Always calculate based on percentage >= 40 for consistency with report statistics
+                                      // Use stored is_passed if available, otherwise calculate with percentage >= 40
+                                      if (attempt.is_passed !== undefined) {
+                                        return attempt.is_passed ? 'score-pass' : 'score-fail';
+                                      }
+                                      // Fallback: calculate percentage
                                       const percentage = examReport.questions.total > 0 
                                         ? (attempt.total_score / examReport.questions.total) * 100 
                                         : 0;

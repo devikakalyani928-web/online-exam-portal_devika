@@ -6,6 +6,7 @@ const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   const getRoleIcon = (role) => {
     switch (role) {
@@ -26,7 +27,7 @@ const Layout = ({ children }) => {
 
   return (
     <>
-      {!isHomePage && (
+      {!isHomePage && !isAuthPage && (
         <nav className="navbar navbar-expand-lg navbar-custom">
           <div className="container-fluid">
             <Link to="/" className="navbar-brand-custom">
@@ -92,9 +93,9 @@ const Layout = ({ children }) => {
           </div>
         </nav>
       )}
-      <main className={isHomePage ? "" : "main-content"}>
-        {!isHomePage && <div className="container-fluid">{children}</div>}
-        {isHomePage && children}
+      <main className={isHomePage || isAuthPage ? "" : "main-content"}>
+        {!isHomePage && !isAuthPage && <div className="container-fluid">{children}</div>}
+        {(isHomePage || isAuthPage) && children}
       </main>
     </>
   );
