@@ -30,7 +30,8 @@ const createExam = async (req, res) => {
 // GET /api/exams
 const getExams = async (req, res) => {
   try {
-    const exams = await Exam.find().populate('created_by', 'username full_name role');
+    // Filter exams to only show those created by the logged-in user
+    const exams = await Exam.find({ created_by: req.user._id }).populate('created_by', 'username full_name role');
     return res.json(exams);
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
@@ -51,6 +52,11 @@ const updateExam = async (req, res) => {
     const exam = await Exam.findById(id);
     if (!exam) {
       return res.status(404).json({ message: 'Exam not found' });
+    }
+    
+    // Verify that the exam was created by the logged-in user
+    if (String(exam.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only update exams you created.' });
     }
 
     // Validate end_time against start_time (either new or existing)
@@ -82,6 +88,12 @@ const activateExam = async (req, res) => {
     if (!exam) {
       return res.status(404).json({ message: 'Exam not found' });
     }
+    
+    // Verify that the exam was created by the logged-in user
+    if (String(exam.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only activate exams you created.' });
+    }
+    
     exam.is_active = true;
     await exam.save();
     return res.json(exam);
@@ -98,6 +110,12 @@ const deactivateExam = async (req, res) => {
     if (!exam) {
       return res.status(404).json({ message: 'Exam not found' });
     }
+    
+    // Verify that the exam was created by the logged-in user
+    if (String(exam.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only deactivate exams you created.' });
+    }
+    
     exam.is_active = false;
     await exam.save();
     return res.json(exam);
@@ -325,6 +343,11 @@ const getExamDetails = async (req, res) => {
     if (!exam) {
       return res.status(404).json({ message: 'Exam not found' });
     }
+    
+    // Verify that the exam was created by the logged-in user
+    if (String(exam.created_by._id) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only view exams you created.' });
+    }
 
     // Get questions count
     const questionsCount = await Question.countDocuments({ exam_id: id });
@@ -370,6 +393,15 @@ const getExamDetails = async (req, res) => {
 const getExamAttempts = async (req, res) => {
   const { id } = req.params;
   try {
+    // Verify that the exam was created by the logged-in user
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+    if (String(exam.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only view attempts for exams you created.' });
+    }
+    
     const attempts = await ExamAttempt.find({ exam_id: id })
       .populate('student_id', 'username full_name email')
       .sort({ createdAt: -1 });
@@ -384,6 +416,15 @@ const getExamAttempts = async (req, res) => {
 const getOngoingAttempts = async (req, res) => {
   const { id } = req.params;
   try {
+    // Verify that the exam was created by the logged-in user
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+    if (String(exam.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only view ongoing attempts for exams you created.' });
+    }
+    
     const ongoingAttempts = await ExamAttempt.find({
       exam_id: id,
       completed: false,
@@ -405,6 +446,11 @@ const deleteExam = async (req, res) => {
     const exam = await Exam.findById(id);
     if (!exam) {
       return res.status(404).json({ message: 'Exam not found' });
+    }
+    
+    // Verify that the exam was created by the logged-in user
+    if (String(exam.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only delete exams you created.' });
     }
 
     // Find all exam attempts associated with this exam

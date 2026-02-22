@@ -33,7 +33,11 @@ const createQuestion = async (req, res) => {
 const getQuestionsByExam = async (req, res) => {
   const { examId } = req.params;
   try {
-    const questions = await Question.find({ exam_id: examId });
+    // Filter questions to only show those created by the logged-in user for this exam
+    const questions = await Question.find({ 
+      exam_id: examId,
+      created_by: req.user._id 
+    });
     return res.json(questions);
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
@@ -49,6 +53,11 @@ const updateQuestion = async (req, res) => {
     const question = await Question.findById(id);
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
+    }
+    
+    // Verify that the question was created by the logged-in user
+    if (String(question.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only update questions you created.' });
     }
 
     if (question_text !== undefined) question.question_text = question_text;
@@ -72,6 +81,11 @@ const deleteQuestion = async (req, res) => {
     const question = await Question.findById(id);
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
+    }
+    
+    // Verify that the question was created by the logged-in user
+    if (String(question.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied. You can only delete questions you created.' });
     }
 
     // Find all student answers associated with this question
@@ -112,7 +126,8 @@ const deleteQuestion = async (req, res) => {
 // GET /api/questions (Question Manager) - Get all questions across all exams
 const getAllQuestions = async (req, res) => {
   try {
-    const questions = await Question.find()
+    // Filter questions to only show those created by the logged-in user
+    const questions = await Question.find({ created_by: req.user._id })
       .populate('exam_id', 'exam_name start_time end_time')
       .populate('created_by', 'username full_name')
       .sort({ createdAt: -1 });
@@ -126,8 +141,12 @@ const getAllQuestions = async (req, res) => {
 // GET /api/questions/stats (Question Manager) - Get question bank statistics
 const getQuestionStats = async (req, res) => {
   try {
-    const totalQuestions = await Question.countDocuments();
+    // Filter stats to only include questions created by the logged-in user
+    const totalQuestions = await Question.countDocuments({ created_by: req.user._id });
     const questionsByExam = await Question.aggregate([
+      {
+        $match: { created_by: req.user._id }
+      },
       {
         $group: {
           _id: '$exam_id',
@@ -169,8 +188,10 @@ const checkDuplicate = async (req, res) => {
   const { question_text, exam_id, exclude_id } = req.body;
   
   try {
+    // Only check for duplicates within questions created by the logged-in user
     const query = {
       question_text: { $regex: new RegExp(`^${question_text.trim()}$`, 'i') },
+      created_by: req.user._id,
     };
     
     if (exam_id) {
