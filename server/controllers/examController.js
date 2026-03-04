@@ -30,10 +30,33 @@ const createExam = async (req, res) => {
 // GET /api/exams
 const getExams = async (req, res) => {
   try {
-    // Filter exams to only show those created by the logged-in user
-    const exams = await Exam.find({ created_by: req.user._id }).populate('created_by', 'username full_name role');
+    let exams;
+    
+    // Role-based filtering:
+    // - Exam Manager: only see exams they created
+    // - Question Manager: see all ACTIVE exams (is_active: true)
+    // - Result Manager: see all ACTIVE exams (is_active: true)
+    if (req.user.role === 'Exam Manager') {
+      exams = await Exam.find({ created_by: req.user._id }).populate('created_by', 'username full_name role');
+    } else if (req.user.role === 'Question Manager' || req.user.role === 'Result Manager') {
+      // Question Manager and Result Manager see all active exams
+      exams = await Exam.find({ is_active: true }).populate('created_by', 'username full_name role');
+    } else {
+      // Default: only show exams created by the logged-in user
+      exams = await Exam.find({ created_by: req.user._id }).populate('created_by', 'username full_name role');
+    }
+    
+    // Log API response for debugging
+    console.log(`[getExams] User: ${req.user.username} (${req.user.role}), Returning ${exams.length} exam(s)`);
+    if (exams.length > 0) {
+      console.log(`[getExams] Exam IDs: ${exams.map(e => e._id).join(', ')}`);
+      console.log(`[getExams] Exam Names: ${exams.map(e => e.exam_name).join(', ')}`);
+      console.log(`[getExams] Active Status: ${exams.map(e => e.is_active).join(', ')}`);
+    }
+    
     return res.json(exams);
   } catch (error) {
+    console.error('[getExams] Error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };

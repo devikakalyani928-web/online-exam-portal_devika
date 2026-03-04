@@ -21,6 +21,7 @@ const QuestionManagerDashboard = () => {
   const [allQuestions, setAllQuestions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [examsLoading, setExamsLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState('');
   const [editMode, setEditMode] = useState(false);
@@ -47,14 +48,40 @@ const QuestionManagerDashboard = () => {
 
   const fetchExams = async () => {
     try {
+      setExamsLoading(true);
+      setError('');
       const res = await fetch(`${API_BASE}/api/exams`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to load exams');
       const data = await res.json();
-      setExams(data);
+      
+      // Log API response for debugging
+      console.log('[QuestionManagerDashboard] fetchExams - API Response:', {
+        count: data.length,
+        exams: data.map(exam => ({
+          id: exam._id,
+          name: exam.exam_name,
+          is_active: exam.is_active,
+          created_by: exam.created_by?.username || exam.created_by
+        }))
+      });
+      
+      // Filter to only show active exams on frontend (additional safety check)
+      const activeExams = data.filter(exam => exam.is_active === true);
+      
+      console.log('[QuestionManagerDashboard] fetchExams - Active Exams:', {
+        count: activeExams.length,
+        examNames: activeExams.map(e => e.exam_name)
+      });
+      
+      setExams(activeExams);
     } catch (err) {
+      console.error('[QuestionManagerDashboard] fetchExams - Error:', err);
       setError(err.message);
+      setExams([]); // Clear exams on error
+    } finally {
+      setExamsLoading(false);
     }
   };
 
@@ -408,7 +435,9 @@ const QuestionManagerDashboard = () => {
                 <div className="qm-glass-card-header">
                   <h3><i className="bi bi-funnel" /> Select Exam</h3>
                 </div>
-                {exams.length === 0 ? (
+                {examsLoading ? (
+                  <div className="qm-loading"><div className="qm-spinner" /></div>
+                ) : exams.length === 0 ? (
                   <div className="qm-empty">
                     <i className="bi bi-info-circle" />
                     <p>No exams available. Ask Exam Manager to create exams first.</p>

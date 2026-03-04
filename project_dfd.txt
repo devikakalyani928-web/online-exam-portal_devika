@@ -1,0 +1,664 @@
+PROJECT DATA FLOW DIAGRAMS (DFD)
+==================================
+
+This file contains Mermaid code for Data Flow Diagrams (DFD) of the Online Exam Portal project.
+The diagrams can be rendered using Mermaid-compatible tools (GitHub, GitLab, Mermaid Live Editor, etc.).
+
+================================================================================
+DFD LEVEL 0 - CONTEXT DIAGRAM (ENTIRE PROJECT)
+================================================================================
+
+This diagram shows the Online Exam Portal system as a single process with 
+external entities (user roles) and the database.
+
+```mermaid
+flowchart TD
+    %% External Entities
+    Admin[System Admin]
+    ExamMgr[Exam Manager]
+    QuestionMgr[Question Manager]
+    ResultMgr[Result Manager]
+    Student[Student]
+    
+    %% System Process
+    System[Online Exam Portal System]
+    
+    %% Database
+    DB[(MongoDB Database)]
+    
+    %% Data Flows - System Admin
+    Admin -->|User Management Requests| System
+    System -->|User Data, System Reports| Admin
+    Admin -->|Feedback Management| System
+    System -->|Feedback Data| Admin
+    
+    %% Data Flows - Exam Manager
+    ExamMgr -->|Exam Creation/Management| System
+    System -->|Exam Data, Exam Status| ExamMgr
+    
+    %% Data Flows - Question Manager
+    QuestionMgr -->|Question Management| System
+    System -->|Question Data, Exam List| QuestionMgr
+    
+    %% Data Flows - Result Manager
+    ResultMgr -->|Result Viewing Requests| System
+    System -->|Result Reports, Statistics| ResultMgr
+    
+    %% Data Flows - Student
+    Student -->|Login, Exam Attempts, Feedback| System
+    System -->|Available Exams, Results, Feedback Replies| Student
+    
+    %% System to Database
+    System <-->|Read/Write Data| DB
+    
+    style System fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    style DB fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style Admin fill:#f3e5f5,stroke:#4a148c
+    style ExamMgr fill:#e8f5e9,stroke:#1b5e20
+    style QuestionMgr fill:#fff9c4,stroke:#f57f17
+    style ResultMgr fill:#e3f2fd,stroke:#0d47a1
+    style Student fill:#fce4ec,stroke:#880e4f
+```
+
+================================================================================
+DFD LEVEL 1 - SYSTEM BREAKDOWN (ENTIRE PROJECT)
+================================================================================
+
+This diagram breaks down the system into major functional processes.
+
+```mermaid
+flowchart TD
+    %% External Entities
+    Admin[System Admin]
+    ExamMgr[Exam Manager]
+    QuestionMgr[Question Manager]
+    ResultMgr[Result Manager]
+    Student[Student]
+    
+    %% Processes
+    P1[1.0<br/>Authentication<br/>& Authorization]
+    P2[2.0<br/>User Management]
+    P3[3.0<br/>Exam Management]
+    P4[4.0<br/>Question Management]
+    P5[5.0<br/>Exam Attempt<br/>& Submission]
+    P6[6.0<br/>Result Management]
+    P7[7.0<br/>Feedback Management]
+    
+    %% Data Stores
+    D1[(D1: Users)]
+    D2[(D2: Exams)]
+    D3[(D3: Questions)]
+    D4[(D4: Exam Attempts)]
+    D5[(D5: Student Answers)]
+    D6[(D6: Feedback)]
+    
+    %% External to Processes - System Admin
+    Admin -->|Create/Update/Delete Users| P2
+    Admin -->|View All Users| P2
+    Admin -->|View All Feedback| P7
+    Admin -->|Reply to Feedback| P7
+    P2 -->|User List, Status| Admin
+    P7 -->|Feedback List| Admin
+    
+    %% External to Processes - Exam Manager
+    ExamMgr -->|Create/Update/Delete Exams| P3
+    ExamMgr -->|Activate/Deactivate Exams| P3
+    ExamMgr -->|View Exam Details| P3
+    P3 -->|Exam Data, Status| ExamMgr
+    
+    %% External to Processes - Question Manager
+    QuestionMgr -->|Select Exam| P3
+    QuestionMgr -->|Create/Update/Delete Questions| P4
+    QuestionMgr -->|View Questions| P4
+    P3 -->|Active Exam List| QuestionMgr
+    P4 -->|Question Data, Statistics| QuestionMgr
+    
+    %% External to Processes - Result Manager
+    ResultMgr -->|View Results Request| P6
+    ResultMgr -->|Generate Reports| P6
+    P6 -->|Result Reports, Statistics| ResultMgr
+    
+    %% External to Processes - Student
+    Student -->|Login Request| P1
+    Student -->|View Available Exams| P3
+    Student -->|Start Exam| P5
+    Student -->|Submit Answers| P5
+    Student -->|View Results| P6
+    Student -->|Submit Feedback| P7
+    Student -->|View Feedback Replies| P7
+    P1 -->|Authentication Token| Student
+    P3 -->|Available Exam List| Student
+    P5 -->|Exam Questions| Student
+    P6 -->|Result Data| Student
+    P7 -->|Feedback Status| Student
+    
+    %% Process to Data Store Flows
+    P1 <-->|Read User Credentials| D1
+    P2 <-->|Read/Write User Data| D1
+    P3 <-->|Read/Write Exam Data| D2
+    P4 <-->|Read/Write Question Data| D3
+    P4 -->|Read Exam Data| D2
+    P5 -->|Read Exam Data| D2
+    P5 -->|Read Questions| D3
+    P5 <-->|Read/Write Attempt Data| D4
+    P5 <-->|Write Answer Data| D5
+    P6 -->|Read Attempt Data| D4
+    P6 -->|Read Answer Data| D5
+    P6 -->|Read Exam Data| D2
+    P6 -->|Read User Data| D1
+    P7 <-->|Read/Write Feedback Data| D6
+    P7 -->|Read User Data| D1
+    
+    %% Inter-process Flows
+    P3 -->|Active Exam List| P4
+    P5 -->|Completed Attempt| P6
+    
+    style P1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P6 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P7 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style D1 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D5 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D6 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+```
+
+================================================================================
+DFD LEVEL 1.1 - SYSTEM ADMIN MODULE
+================================================================================
+
+This diagram details the System Admin module processes.
+
+```mermaid
+flowchart TD
+    %% External Entity
+    Admin[System Admin]
+    
+    %% Processes
+    P1_1[1.1.1<br/>Authenticate<br/>Admin]
+    P1_2[1.1.2<br/>Create User]
+    P1_3[1.1.3<br/>View Users]
+    P1_4[1.1.4<br/>Update User]
+    P1_5[1.1.5<br/>Delete User]
+    P1_6[1.1.6<br/>View Feedback]
+    P1_7[1.1.7<br/>Reply to Feedback]
+    P1_8[1.1.8<br/>View System<br/>Statistics]
+    
+    %% Data Stores
+    D1[(D1: Users)]
+    D6[(D6: Feedback)]
+    D2[(D2: Exams)]
+    D4[(D4: Exam Attempts)]
+    
+    %% External to Processes
+    Admin -->|Login Credentials| P1_1
+    Admin -->|User Creation Data| P1_2
+    Admin -->|View Users Request| P1_3
+    Admin -->|User Update Data| P1_4
+    Admin -->|Delete User Request| P1_5
+    Admin -->|View Feedback Request| P1_6
+    Admin -->|Reply Message| P1_7
+    Admin -->|View Statistics Request| P1_8
+    
+    P1_1 -->|Authentication Token| Admin
+    P1_3 -->|User List| Admin
+    P1_4 -->|Update Confirmation| Admin
+    P1_5 -->|Delete Confirmation| Admin
+    P1_6 -->|Feedback List| Admin
+    P1_7 -->|Reply Confirmation| Admin
+    P1_8 -->|System Statistics| Admin
+    
+    %% Process to Data Store Flows
+    P1_1 -->|Read User Credentials| D1
+    P1_2 -->|Write User Data| D1
+    P1_3 -->|Read User Data| D1
+    P1_4 -->|Read/Write User Data| D1
+    P1_5 -->|Delete User Data| D1
+    P1_6 -->|Read Feedback Data| D6
+    P1_7 -->|Read/Write Feedback Data| D6
+    P1_8 -->|Read User Data| D1
+    P1_8 -->|Read Exam Data| D2
+    P1_8 -->|Read Attempt Data| D4
+    
+    %% Inter-process Flows
+    P1_1 -->|Validated Admin| P1_2
+    P1_1 -->|Validated Admin| P1_3
+    P1_1 -->|Validated Admin| P1_4
+    P1_1 -->|Validated Admin| P1_5
+    P1_1 -->|Validated Admin| P1_6
+    P1_1 -->|Validated Admin| P1_7
+    P1_1 -->|Validated Admin| P1_8
+    
+    style P1_1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_2 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_3 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_4 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_5 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_6 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_7 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P1_8 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style D1 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D6 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style Admin fill:#f3e5f5,stroke:#4a148c
+```
+
+================================================================================
+DFD LEVEL 1.2 - EXAM MANAGER MODULE
+================================================================================
+
+This diagram details the Exam Manager module processes.
+
+```mermaid
+flowchart TD
+    %% External Entity
+    ExamMgr[Exam Manager]
+    
+    %% Processes
+    P2_1[1.2.1<br/>Authenticate<br/>Exam Manager]
+    P2_2[1.2.2<br/>Create Exam]
+    P2_3[1.2.3<br/>View Exams]
+    P2_4[1.2.4<br/>Update Exam]
+    P2_5[1.2.5<br/>Activate Exam]
+    P2_6[1.2.6<br/>Deactivate Exam]
+    P2_7[1.2.7<br/>Delete Exam]
+    P2_8[1.2.8<br/>View Exam<br/>Details]
+    P2_9[1.2.9<br/>Monitor Exam<br/>Status]
+    
+    %% Data Stores
+    D1[(D1: Users)]
+    D2[(D2: Exams)]
+    D3[(D3: Questions)]
+    D4[(D4: Exam Attempts)]
+    
+    %% External to Processes
+    ExamMgr -->|Login Credentials| P2_1
+    ExamMgr -->|Exam Creation Data| P2_2
+    ExamMgr -->|View Exams Request| P2_3
+    ExamMgr -->|Exam Update Data| P2_4
+    ExamMgr -->|Activate Request| P2_5
+    ExamMgr -->|Deactivate Request| P2_6
+    ExamMgr -->|Delete Request| P2_7
+    ExamMgr -->|View Details Request| P2_8
+    ExamMgr -->|Monitor Request| P2_9
+    
+    P2_1 -->|Authentication Token| ExamMgr
+    P2_3 -->|Exam List| ExamMgr
+    P2_4 -->|Update Confirmation| ExamMgr
+    P2_5 -->|Activation Status| ExamMgr
+    P2_6 -->|Deactivation Status| ExamMgr
+    P2_7 -->|Delete Confirmation| ExamMgr
+    P2_8 -->|Exam Details, Stats| ExamMgr
+    P2_9 -->|Exam Status, Ongoing Attempts| ExamMgr
+    
+    %% Process to Data Store Flows
+    P2_1 -->|Read User Credentials| D1
+    P2_2 -->|Write Exam Data| D2
+    P2_2 -->|Read User Data| D1
+    P2_3 -->|Read Exam Data| D2
+    P2_4 -->|Read/Write Exam Data| D2
+    P2_5 -->|Read/Write Exam Data| D2
+    P2_6 -->|Read/Write Exam Data| D2
+    P2_7 -->|Delete Exam Data| D2
+    P2_7 -->|Delete Related Questions| D3
+    P2_7 -->|Delete Related Attempts| D4
+    P2_8 -->|Read Exam Data| D2
+    P2_8 -->|Read Question Count| D3
+    P2_8 -->|Read Attempt Stats| D4
+    P2_9 -->|Read Exam Data| D2
+    P2_9 -->|Read Attempt Data| D4
+    
+    %% Inter-process Flows
+    P2_1 -->|Validated Exam Manager| P2_2
+    P2_1 -->|Validated Exam Manager| P2_3
+    P2_1 -->|Validated Exam Manager| P2_4
+    P2_1 -->|Validated Exam Manager| P2_5
+    P2_1 -->|Validated Exam Manager| P2_6
+    P2_1 -->|Validated Exam Manager| P2_7
+    P2_1 -->|Validated Exam Manager| P2_8
+    P2_1 -->|Validated Exam Manager| P2_9
+    
+    style P2_1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_2 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_3 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_4 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_5 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_6 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_7 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_8 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P2_9 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style D1 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style ExamMgr fill:#e8f5e9,stroke:#1b5e20
+```
+
+================================================================================
+DFD LEVEL 1.3 - QUESTION MANAGER MODULE
+================================================================================
+
+This diagram details the Question Manager module processes.
+
+```mermaid
+flowchart TD
+    %% External Entity
+    QuestionMgr[Question Manager]
+    
+    %% Processes
+    P3_1[1.3.1<br/>Authenticate<br/>Question Manager]
+    P3_2[1.3.2<br/>View Active<br/>Exams]
+    P3_3[1.3.3<br/>Select Exam]
+    P3_4[1.3.4<br/>Create Question]
+    P3_5[1.3.5<br/>View Questions]
+    P3_6[1.3.6<br/>Update Question]
+    P3_7[1.3.7<br/>Delete Question]
+    P3_8[1.3.8<br/>Check Duplicate]
+    P3_9[1.3.9<br/>View Question<br/>Statistics]
+    
+    %% Data Stores
+    D1[(D1: Users)]
+    D2[(D2: Exams)]
+    D3[(D3: Questions)]
+    
+    %% External to Processes
+    QuestionMgr -->|Login Credentials| P3_1
+    QuestionMgr -->|View Exams Request| P3_2
+    QuestionMgr -->|Exam Selection| P3_3
+    QuestionMgr -->|Question Data| P3_4
+    QuestionMgr -->|View Questions Request| P3_5
+    QuestionMgr -->|Question Update Data| P3_6
+    QuestionMgr -->|Delete Request| P3_7
+    QuestionMgr -->|Duplicate Check Request| P3_8
+    QuestionMgr -->|Statistics Request| P3_9
+    
+    P3_1 -->|Authentication Token| QuestionMgr
+    P3_2 -->|Active Exam List| QuestionMgr
+    P3_3 -->|Selected Exam| QuestionMgr
+    P3_4 -->|Question Created| QuestionMgr
+    P3_5 -->|Question List| QuestionMgr
+    P3_6 -->|Update Confirmation| QuestionMgr
+    P3_7 -->|Delete Confirmation| QuestionMgr
+    P3_8 -->|Duplicate Status| QuestionMgr
+    P3_9 -->|Question Statistics| QuestionMgr
+    
+    %% Process to Data Store Flows
+    P3_1 -->|Read User Credentials| D1
+    P3_2 -->|Read Active Exam Data| D2
+    P3_3 -->|Read Exam Data| D2
+    P3_4 -->|Write Question Data| D3
+    P3_4 -->|Read Exam Data| D2
+    P3_4 -->|Read User Data| D1
+    P3_5 -->|Read Question Data| D3
+    P3_6 -->|Read/Write Question Data| D3
+    P3_7 -->|Delete Question Data| D3
+    P3_8 -->|Read Question Data| D3
+    P3_9 -->|Read Question Data| D3
+    P3_9 -->|Read Exam Data| D2
+    
+    %% Inter-process Flows
+    P3_1 -->|Validated Question Manager| P3_2
+    P3_1 -->|Validated Question Manager| P3_3
+    P3_1 -->|Validated Question Manager| P3_4
+    P3_1 -->|Validated Question Manager| P3_5
+    P3_1 -->|Validated Question Manager| P3_6
+    P3_1 -->|Validated Question Manager| P3_7
+    P3_1 -->|Validated Question Manager| P3_8
+    P3_1 -->|Validated Question Manager| P3_9
+    P3_2 -->|Active Exam List| P3_3
+    P3_3 -->|Selected Exam| P3_4
+    P3_3 -->|Selected Exam| P3_5
+    
+    style P3_1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_2 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_3 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_4 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_5 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_6 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_7 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_8 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P3_9 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style D1 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style QuestionMgr fill:#fff9c4,stroke:#f57f17
+```
+
+================================================================================
+DFD LEVEL 1.4 - RESULT MANAGER MODULE
+================================================================================
+
+This diagram details the Result Manager module processes.
+
+```mermaid
+flowchart TD
+    %% External Entity
+    ResultMgr[Result Manager]
+    
+    %% Processes
+    P4_1[1.4.1<br/>Authenticate<br/>Result Manager]
+    P4_2[1.4.2<br/>View All Results]
+    P4_3[1.4.3<br/>View Exam Results]
+    P4_4[1.4.4<br/>View Student Results]
+    P4_5[1.4.5<br/>View Attempt Details]
+    P4_6[1.4.6<br/>Generate Exam Report]
+    P4_7[1.4.7<br/>View Result<br/>Statistics]
+    
+    %% Data Stores
+    D1[(D1: Users)]
+    D2[(D2: Exams)]
+    D3[(D3: Questions)]
+    D4[(D4: Exam Attempts)]
+    D5[(D5: Student Answers)]
+    
+    %% External to Processes
+    ResultMgr -->|Login Credentials| P4_1
+    ResultMgr -->|View All Results Request| P4_2
+    ResultMgr -->|View Exam Results Request| P4_3
+    ResultMgr -->|View Student Results Request| P4_4
+    ResultMgr -->|View Attempt Details Request| P4_5
+    ResultMgr -->|Generate Report Request| P4_6
+    ResultMgr -->|Statistics Request| P4_7
+    
+    P4_1 -->|Authentication Token| ResultMgr
+    P4_2 -->|All Results List| ResultMgr
+    P4_3 -->|Exam Results| ResultMgr
+    P4_4 -->|Student Results| ResultMgr
+    P4_5 -->|Attempt Details, Performance Summary| ResultMgr
+    P4_6 -->|Exam Report| ResultMgr
+    P4_7 -->|Result Statistics| ResultMgr
+    
+    %% Process to Data Store Flows
+    P4_1 -->|Read User Credentials| D1
+    P4_2 -->|Read Attempt Data| D4
+    P4_2 -->|Read User Data| D1
+    P4_2 -->|Read Exam Data| D2
+    P4_3 -->|Read Attempt Data| D4
+    P4_3 -->|Read Exam Data| D2
+    P4_3 -->|Read User Data| D1
+    P4_4 -->|Read Attempt Data| D4
+    P4_4 -->|Read User Data| D1
+    P4_4 -->|Read Exam Data| D2
+    P4_5 -->|Read Attempt Data| D4
+    P4_5 -->|Read Answer Data| D5
+    P4_5 -->|Read Question Data| D3
+    P4_5 -->|Read Exam Data| D2
+    P4_5 -->|Read User Data| D1
+    P4_6 -->|Read Attempt Data| D4
+    P4_6 -->|Read Answer Data| D5
+    P4_6 -->|Read Exam Data| D2
+    P4_6 -->|Read User Data| D1
+    P4_7 -->|Read Attempt Data| D4
+    P4_7 -->|Read Answer Data| D5
+    P4_7 -->|Read Exam Data| D2
+    
+    %% Inter-process Flows
+    P4_1 -->|Validated Result Manager| P4_2
+    P4_1 -->|Validated Result Manager| P4_3
+    P4_1 -->|Validated Result Manager| P4_4
+    P4_1 -->|Validated Result Manager| P4_5
+    P4_1 -->|Validated Result Manager| P4_6
+    P4_1 -->|Validated Result Manager| P4_7
+    
+    style P4_1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4_2 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4_3 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4_4 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4_5 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4_6 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P4_7 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style D1 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D5 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style ResultMgr fill:#e3f2fd,stroke:#0d47a1
+```
+
+================================================================================
+DFD LEVEL 1.5 - STUDENT MODULE
+================================================================================
+
+This diagram details the Student module processes.
+
+```mermaid
+flowchart TD
+    %% External Entity
+    Student[Student]
+    
+    %% Processes
+    P5_1[1.5.1<br/>Register/Login]
+    P5_2[1.5.2<br/>View Available<br/>Exams]
+    P5_3[1.5.3<br/>Start Exam]
+    P5_4[1.5.4<br/>Answer Questions]
+    P5_5[1.5.5<br/>Submit Exam]
+    P5_6[1.5.6<br/>View Results]
+    P5_7[1.5.7<br/>Submit Feedback]
+    P5_8[1.5.8<br/>View Feedback<br/>Replies]
+    
+    %% Data Stores
+    D1[(D1: Users)]
+    D2[(D2: Exams)]
+    D3[(D3: Questions)]
+    D4[(D4: Exam Attempts)]
+    D5[(D5: Student Answers)]
+    D6[(D6: Feedback)]
+    
+    %% External to Processes
+    Student -->|Registration/Login Data| P5_1
+    Student -->|View Exams Request| P5_2
+    Student -->|Start Exam Request| P5_3
+    Student -->|Selected Answers| P5_4
+    Student -->|Submit Request| P5_5
+    Student -->|View Results Request| P5_6
+    Student -->|Feedback Message| P5_7
+    Student -->|View Feedback Request| P5_8
+    
+    P5_1 -->|Authentication Token| Student
+    P5_2 -->|Available Exam List| Student
+    P5_3 -->|Exam Questions| Student
+    P5_4 -->|Answer Confirmation| Student
+    P5_5 -->|Submission Confirmation| Student
+    P5_6 -->|Result Data, Pass/Fail| Student
+    P5_7 -->|Feedback Submitted| Student
+    P5_8 -->|Feedback List, Replies| Student
+    
+    %% Process to Data Store Flows
+    P5_1 -->|Read/Write User Data| D1
+    P5_2 -->|Read Active Exam Data| D2
+    P5_3 -->|Read Exam Data| D2
+    P5_3 -->|Read Questions| D3
+    P5_3 -->|Write Attempt Data| D4
+    P5_3 -->|Read User Data| D1
+    P5_4 -->|Read Questions| D3
+    P5_5 -->|Read Questions| D3
+    P5_5 -->|Read/Write Attempt Data| D4
+    P5_5 -->|Write Answer Data| D5
+    P5_6 -->|Read Attempt Data| D4
+    P5_6 -->|Read Answer Data| D5
+    P5_6 -->|Read Question Data| D3
+    P5_6 -->|Read Exam Data| D2
+    P5_7 -->|Write Feedback Data| D6
+    P5_7 -->|Read User Data| D1
+    P5_8 -->|Read Feedback Data| D6
+    P5_8 -->|Read User Data| D1
+    
+    %% Inter-process Flows
+    P5_1 -->|Authenticated Student| P5_2
+    P5_2 -->|Selected Exam| P5_3
+    P5_3 -->|Exam Started| P5_4
+    P5_4 -->|Answers Ready| P5_5
+    P5_5 -->|Exam Submitted| P5_6
+    P5_1 -->|Authenticated Student| P5_7
+    P5_1 -->|Authenticated Student| P5_8
+    
+    style P5_1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_2 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_3 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_4 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_5 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_6 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_7 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style P5_8 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style D1 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D5 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D6 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style Student fill:#fce4ec,stroke:#880e4f
+```
+
+================================================================================
+NOTES
+================================================================================
+
+1. DFD Level 0 (Context Diagram):
+   - Shows the entire Online Exam Portal system as a single process
+   - External entities: All 5 user roles (System Admin, Exam Manager, Question Manager, Result Manager, Student)
+   - Data store: MongoDB Database
+   - All data flows between external entities and the system are shown
+
+2. DFD Level 1 (System Breakdown):
+   - Breaks down the system into 7 major processes:
+     1.0 Authentication & Authorization
+     2.0 User Management
+     3.0 Exam Management
+     4.0 Question Management
+     5.0 Exam Attempt & Submission
+     6.0 Result Management
+     7.0 Feedback Management
+   - Shows 6 data stores: Users, Exams, Questions, Exam Attempts, Student Answers, Feedback
+   - Shows data flows between processes and data stores
+
+3. DFD Level 1.1 - System Admin Module:
+   - 8 processes covering user management, feedback management, and system statistics
+   - Accesses Users, Feedback, Exams, and Exam Attempts data stores
+
+4. DFD Level 1.2 - Exam Manager Module:
+   - 9 processes covering exam creation, activation, deactivation, monitoring
+   - Accesses Users, Exams, Questions, and Exam Attempts data stores
+
+5. DFD Level 1.3 - Question Manager Module:
+   - 9 processes covering question creation, viewing, updating, deletion, and statistics
+   - Accesses Users, Exams, and Questions data stores
+
+6. DFD Level 1.4 - Result Manager Module:
+   - 7 processes covering result viewing, reporting, and statistics
+   - Accesses Users, Exams, Questions, Exam Attempts, and Student Answers data stores
+
+7. DFD Level 1.5 - Student Module:
+   - 8 processes covering registration, exam taking, result viewing, and feedback
+   - Accesses all 6 data stores
+
+All diagrams use Mermaid flowchart syntax and can be rendered in:
+- GitHub/GitLab markdown files
+- Mermaid Live Editor (https://mermaid.live)
+- VS Code with Mermaid extension
+- Any Mermaid-compatible tool
