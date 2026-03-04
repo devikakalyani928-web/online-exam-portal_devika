@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../utils/api';
 import '../styles/ExamManagerDashboard.css';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
 const NAV_ITEMS = [
   { key: 'overview', icon: 'bi-list-ul',              label: 'Exam Overview' },

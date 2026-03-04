@@ -1,12 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { API_BASE } from '../utils/api';
 
 const AuthContext = createContext(null);
-
-// Prefer explicit API base from env (Vercel/Render), fall back to localhost for dev
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  import.meta.env.VITE_API_URL || // compatibility with your existing Vercel env name
-  'http://localhost:5000';
 const TOKEN_KEY = 'auth_token';
 
 export const AuthProvider = ({ children }) => {
