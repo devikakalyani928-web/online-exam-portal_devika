@@ -8,7 +8,7 @@ import '../styles/Auth.css';
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      const userData = await login(email, password);
+      const userData = await login(identifier, password);
       const dashboardRoute = getDashboardRoute(userData.role);
       navigate(dashboardRoute);
     } catch (err) {
@@ -58,12 +58,12 @@ const Login = () => {
           <form onSubmit={handleSubmit}>
             <div className="auth-field">
               <div className="auth-input-wrapper">
-                <i className="bi bi-envelope auth-input-icon"></i>
+                <i className="bi bi-person auth-input-icon"></i>
                 <input
-                  type="email"
-                  placeholder="Email Address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  placeholder="Email or Username"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                 />
               </div>

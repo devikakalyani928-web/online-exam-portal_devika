@@ -185,9 +185,10 @@ const AdminDashboard = () => {
   /* ───── Validation helpers ───── */
 
   const validateUsername = (username) => {
-    const re = /^[a-zA-Z._]+$/;
+    // Allow letters, numbers, underscore (_), and dot (.)
+    const re = /^[a-zA-Z0-9._]+$/;
     if (!re.test(username))
-      return 'Username can only contain letters, underscore (_), and full stop (.). No spaces, digits, or other characters allowed.';
+      return 'Username can only contain letters, numbers, underscore (_), and dot (.). No spaces or other symbols allowed.';
     return '';
   };
 
@@ -537,7 +538,7 @@ const AdminDashboard = () => {
                         type="text"
                         className={`form-control ${userFormErrors.username ? 'is-invalid' : ''}`}
                         name="username"
-                        placeholder="Username (letters, _, . only)"
+                        placeholder="Username (letters, numbers, _, .)"
                         value={userForm.username}
                         onChange={handleUserFormChange}
                         required

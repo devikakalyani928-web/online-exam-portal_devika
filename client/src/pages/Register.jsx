@@ -23,9 +23,10 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
 
   const validateUsername = (username) => {
-    const usernameRegex = /^[a-zA-Z._]+$/;
+    // Allow letters, numbers, underscore (_), and dot (.)
+    const usernameRegex = /^[a-zA-Z0-9._]+$/;
     if (!usernameRegex.test(username)) {
-      return 'Username can only contain letters, underscore (_), and full stop (.).';
+      return 'Username can only contain letters, numbers, underscore (_), and dot (.).';
     }
     return '';
   };

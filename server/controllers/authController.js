@@ -65,13 +65,25 @@ const register = async (req, res) => {
 };
 
 // POST /api/auth/login
+// Allows login using either email or username (identifier)
 const login = async (req, res) => {
   const validationError = handleValidation(req, res);
   if (validationError) return;
 
-  const { email, password } = req.body;
+  const { identifier, password } = req.body;
+
   try {
-    const user = await User.findOne({ email });
+    const trimmed = identifier.trim();
+
+    // Determine whether identifier is an email or username
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+
+    const query = isEmail
+      ? { email: trimmed.toLowerCase() }
+      : { username: trimmed }; // exact username match
+
+    const user = await User.findOne(query);
+
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }

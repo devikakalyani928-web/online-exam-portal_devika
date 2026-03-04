@@ -16,7 +16,10 @@ router.get('/', getUsers);
 router.post(
   '/',
   [
-    body('username').notEmpty().withMessage('Username is required'),
+    body('username')
+      .notEmpty().withMessage('Username is required')
+      .matches(/^[a-zA-Z0-9._]+$/)
+      .withMessage('Username can only contain letters, numbers, underscore (_), and dot (.).'),
     body('full_name').notEmpty().withMessage('Full name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
