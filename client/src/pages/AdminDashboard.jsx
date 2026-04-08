@@ -188,6 +188,8 @@ const AdminDashboard = () => {
     const re = /^[a-zA-Z0-9._]+$/;
     if (!re.test(username))
       return 'Username can only contain letters, numbers, underscore (_), and dot (.). No spaces or other symbols allowed.';
+    // Must contain at least one alphabet letter (prevent numeric-only usernames)
+    if (!/[a-zA-Z]/.test(username)) return 'Username must contain at least one letter (A–Z).';
     return '';
   };
 
